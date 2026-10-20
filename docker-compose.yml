@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    container_name: judgeai_api
+    env_file:
+      - .env
+    environment:
+      EMBEDDING_CACHE_DIR: /app/.fastembed_cache
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+      - model_cache:/app/.fastembed_cache
+    command: sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: judgeai_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-judgeai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-judgeai}
+      POSTGRES_DB: ${POSTGRES_DB:-judgeai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-judgeai} -d ${POSTGRES_DB:-judgeai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  uploads:
+  model_cache:

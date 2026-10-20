@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+MANIFEST
+
+# Виртуальные окружения
+.venv/
+venv/
+env/
+ENV/
+
+# uv
+.uv/
+uv.lock
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Но оставляем пример
+!.env.example
+
+# Загрузки и кэш моделей
+uploads/*
+!uploads/.gitkeep
+.fastembed_cache/
+.hf_cache/
+models/
+
+# Alembic - миграции нужны в репозитории
+# но игнорируем временные файлы
+alembic/*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.pydevproject
+
+# mypy / ruff / pytest
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
