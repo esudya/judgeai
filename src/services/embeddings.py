@@ -24,17 +24,16 @@ async def get_embedding_model() -> Any:
             if _model is None:
                 try:
                     fastembed = importlib.import_module("fastembed")
-                    text_embedding_cls = getattr(fastembed, "TextEmbedding")
+                    text_embedding_cls = fastembed.TextEmbedding
                     _model = await asyncio.to_thread(
                         text_embedding_cls,
                         model_name=settings.EMBEDDING_MODEL,
                         cache_dir=settings.EMBEDDING_CACHE_DIR,
                     )
-                except ModuleNotFoundError:
+                except ModuleNotFoundError as exc:
                     raise RuntimeError(
-                        "Пакет fastembed не установлен. "
-                        "Выполни: uv pip install fastembed"
-                    )
+                        "Пакет fastembed не установлен. Выполни: uv pip install fastembed"
+                    ) from exc
 
     return _model
 
@@ -54,8 +53,7 @@ async def embed_texts(texts: list[str], prefix: str = "") -> list[list[float]]:
         vectors = list(model.embed(cleaned))
 
         return [
-            vector.tolist() if hasattr(vector, "tolist") else list(vector)
-            for vector in vectors
+            vector.tolist() if hasattr(vector, "tolist") else list(vector) for vector in vectors
         ]
 
     return await asyncio.to_thread(_embed)
