@@ -1,40 +1,60 @@
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.api.deps import DbSession
 from src.db.models import Attachment, Chat, Message
-from src.schemas.chat import ChatCreate, ChatRead
+from src.schemas.chat import ChatCreate, ChatRead, ChatStatus
 from src.schemas.message import MessageRead, MessageSendResponse
-from src.services.case_analyzer import analyze_case
-from src.services.document_parser import extract_text_from_file
-from src.services.file_reader import save_upload_file
-from src.services.knowledge_service import create_knowledge_verdict_from_text
-from src.services.similarity_search import find_similar_verdicts
+from src.services.analysis_runner import run_analysis
+from src.services.file_reader import save_upload_file, validate_extension
 
 router = APIRouter()
+
+_STATUS_MAP: dict[str | None, ChatStatus] = {
+    None: "draft",
+    "pending": "busy",
+    "running": "busy",
+    "completed": "ready",
+    "failed": "failed",
+}
 
 
 async def load_message(db: AsyncSession, message_id: int) -> Message:
     stmt = (
-        select(Message)
-        .options(selectinload(Message.attachments))
-        .where(Message.id == message_id)
+        select(Message).options(selectinload(Message.attachments)).where(Message.id == message_id)
     )
     message = await db.scalar(stmt)
-
     if not message:
         raise HTTPException(status_code=404, detail="Сообщение не найдено")
-
     return message
+
+
+async def _chat_statuses(db: AsyncSession, chat_ids: list[int]) -> dict[int, ChatStatus]:
+    if not chat_ids:
+        return {}
+    # Latest assistant message per chat; ids are monotonic, so max(id) is the newest one.
+    latest_ids = (
+        select(func.max(Message.id))
+        .where(Message.chat_id.in_(chat_ids), Message.role == "assistant")
+        .group_by(Message.chat_id)
+    )
+    rows = (
+        await db.execute(select(Message.chat_id, Message.status).where(Message.id.in_(latest_ids)))
+    ).all()
+    return {chat_id: _STATUS_MAP.get(status, "draft") for chat_id, status in rows}
+
+
+def _chat_read(chat: Chat, status: ChatStatus) -> ChatRead:
+    return ChatRead.model_validate(chat).model_copy(update={"status": status})
 
 
 @router.get("", response_model=list[ChatRead])
 async def list_chats(db: DbSession):
-    stmt = select(Chat).order_by(Chat.updated_at.desc())
-    result = await db.scalars(stmt)
-    return [ChatRead.model_validate(chat) for chat in result.all()]
+    chats = (await db.scalars(select(Chat).order_by(Chat.updated_at.desc(), Chat.id.desc()))).all()
+    statuses = await _chat_statuses(db, [c.id for c in chats])
+    return [_chat_read(c, statuses.get(c.id, "draft")) for c in chats]
 
 
 @router.post("", response_model=ChatRead, status_code=201)
@@ -43,23 +63,21 @@ async def create_chat(payload: ChatCreate, db: DbSession):
     db.add(chat)
     await db.commit()
     await db.refresh(chat)
-    return ChatRead.model_validate(chat)
+    return _chat_read(chat, "draft")
 
 
 @router.get("/{chat_id}", response_model=ChatRead)
 async def get_chat(chat_id: int, db: DbSession):
     chat = await db.get(Chat, chat_id)
-
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
-
-    return ChatRead.model_validate(chat)
+    statuses = await _chat_statuses(db, [chat.id])
+    return _chat_read(chat, statuses.get(chat.id, "draft"))
 
 
 @router.get("/{chat_id}/messages", response_model=list[MessageRead])
 async def list_messages(chat_id: int, db: DbSession):
     chat = await db.get(Chat, chat_id)
-
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
 
@@ -67,95 +85,72 @@ async def list_messages(chat_id: int, db: DbSession):
         select(Message)
         .options(selectinload(Message.attachments))
         .where(Message.chat_id == chat_id)
-        .order_by(Message.created_at)
+        .order_by(Message.created_at, Message.id)
     )
-
     result = await db.scalars(stmt)
     return [MessageRead.model_validate(message) for message in result.all()]
 
 
-@router.post("/{chat_id}/messages", response_model=MessageSendResponse)
+@router.get("/{chat_id}/messages/{message_id}", response_model=MessageRead)
+async def get_message(chat_id: int, message_id: int, db: DbSession):
+    """Poll target while an analysis is running (status / stage / result)."""
+    message = await load_message(db, message_id)
+    if message.chat_id != chat_id:
+        raise HTTPException(status_code=404, detail="Сообщение не найдено")
+    return MessageRead.model_validate(message)
+
+
+@router.post("/{chat_id}/messages", response_model=MessageSendResponse, status_code=202)
 async def create_message(
     chat_id: int,
     db: DbSession,
+    background: BackgroundTasks,
     content: str | None = Form(None),
     use_knowledge_base: bool = Form(True),
     save_to_knowledge_base: bool = Form(False),
     files: list[UploadFile] = File(default_factory=list),
 ):
+    """Store the request and files, then analyse in the background (202 + poll)."""
     chat = await db.get(Chat, chat_id)
-
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
+    if not (content and content.strip()) and not files:
+        raise HTTPException(status_code=422, detail="Нужен текст запроса или хотя бы один файл")
+    for file in files:  # reject the whole request before writing anything
+        validate_extension(file.filename)
 
-    user_message = Message(
-        chat_id=chat_id,
-        role="user",
-        content=content,
-        status="completed",
-    )
-
+    user_message = Message(chat_id=chat_id, role="user", content=content, status="completed")
     db.add(user_message)
     await db.flush()
 
-    document_texts: list[str] = []
-
     for file in files:
         stored_path, size = await save_upload_file(file)
-        extracted_text = await extract_text_from_file(stored_path)
-
-        attachment = Attachment(
-            message_id=user_message.id,
-            filename=file.filename or "file",
-            content_type=file.content_type,
-            size=size,
-            stored_path=str(stored_path),
-            extracted_text=extracted_text,
-        )
-
-        db.add(attachment)
-        document_texts.append(extracted_text)
-
-        if save_to_knowledge_base:
-            await create_knowledge_verdict_from_text(
-                db=db,
+        db.add(
+            Attachment(
+                message_id=user_message.id,
                 filename=file.filename or "file",
-                raw_text=extracted_text,
-                source_type="chat",
+                content_type=file.content_type,
+                size=size,
+                stored_path=str(stored_path),
+                extraction_status="ok",
             )
-
-    await db.commit()
-
-    similar_items: list[dict] = []
-
-    if use_knowledge_base:
-        similar_items = await find_similar_verdicts(
-            db=db,
-            query_text=content or "",
-            document_texts=document_texts,
         )
 
-    assistant_content, analysis = await analyze_case(
-        question=content,
-        document_texts=document_texts,
-        similar_items=similar_items,
-    )
-
-    assistant_message = Message(
-        chat_id=chat_id,
-        role="assistant",
-        content=assistant_content,
-        status="completed",
-        analysis=analysis,
-    )
-
+    assistant_message = Message(chat_id=chat_id, role="assistant", status="pending")
     db.add(assistant_message)
+    # Chat.updated_at's onupdate only fires on changes to the chat row itself.
+    await db.execute(update(Chat).where(Chat.id == chat_id).values(updated_at=func.now()))
     await db.commit()
 
-    user_message_loaded = await load_message(db, user_message.id)
-    assistant_message_loaded = await load_message(db, assistant_message.id)
+    background.add_task(
+        run_analysis,
+        user_message.id,
+        assistant_message.id,
+        save_to_knowledge_base=save_to_knowledge_base,
+        use_knowledge_base=use_knowledge_base,
+    )
 
     return MessageSendResponse(
-        user_message=MessageRead.model_validate(user_message_loaded),
-        assistant_message=MessageRead.model_validate(assistant_message_loaded),
+        user_message=MessageRead.model_validate(await load_message(db, user_message.id)),
+        assistant_message=MessageRead.model_validate(await load_message(db, assistant_message.id)),
     )

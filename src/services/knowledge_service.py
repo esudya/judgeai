@@ -46,20 +46,14 @@ def build_chunks(raw_text: str) -> list[str]:
         return []
 
     paragraphs = [
-        paragraph.strip()
-        for paragraph in re.split(r"\n\s*\n", text)
-        if paragraph.strip()
+        paragraph.strip() for paragraph in re.split(r"\n\s*\n", text) if paragraph.strip()
     ]
 
     chunks: list[str] = []
     current = ""
 
     for paragraph in paragraphs:
-        if (
-            len(current) + len(paragraph) + 1
-            > settings.EMBEDDING_CHUNK_SIZE
-            and current
-        ):
+        if len(current) + len(paragraph) + 1 > settings.EMBEDDING_CHUNK_SIZE and current:
             chunks.append(current)
             current = paragraph
         else:
@@ -72,12 +66,9 @@ def build_chunks(raw_text: str) -> list[str]:
         chunks.append(current)
 
     if not chunks:
-        chunks = [text[:settings.EMBEDDING_CHUNK_SIZE]]
+        chunks = [text[: settings.EMBEDDING_CHUNK_SIZE]]
 
-    return [
-        chunk[:settings.EMBEDDING_CHUNK_SIZE]
-        for chunk in chunks
-    ]
+    return [chunk[: settings.EMBEDDING_CHUNK_SIZE] for chunk in chunks]
 
 
 async def create_knowledge_verdict_from_text(
@@ -89,9 +80,7 @@ async def create_knowledge_verdict_from_text(
     file_hash = calculate_text_hash(raw_text)
 
     existing = await db.scalar(
-        select(KnowledgeVerdict).where(
-            KnowledgeVerdict.file_hash == file_hash
-        )
+        select(KnowledgeVerdict).where(KnowledgeVerdict.file_hash == file_hash)
     )
 
     if existing:

@@ -1,8 +1,12 @@
+import logging
+
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import KnowledgeChunk, KnowledgeVerdict
 from src.services.embeddings import embed_query
+
+logger = logging.getLogger(__name__)
 
 
 async def _vector_search(
@@ -41,9 +45,7 @@ async def _vector_search(
                 "verdict_id": verdict.id,
                 "case_number": verdict.case_number,
                 "court_name": verdict.court_name,
-                "verdict_date": verdict.verdict_date.isoformat()
-                if verdict.verdict_date
-                else None,
+                "verdict_date": verdict.verdict_date.isoformat() if verdict.verdict_date else None,
                 "score": round(max(0.0, 1.0 - float(dist)), 4),
                 "excerpt": chunk.content[:300],
             }
@@ -82,9 +84,7 @@ async def _keyword_fallback(
             "verdict_id": verdict.id,
             "case_number": verdict.case_number,
             "court_name": verdict.court_name,
-            "verdict_date": verdict.verdict_date.isoformat()
-            if verdict.verdict_date
-            else None,
+            "verdict_date": verdict.verdict_date.isoformat() if verdict.verdict_date else None,
             "score": None,
             "excerpt": (verdict.raw_text or "")[:300],
         }
@@ -113,6 +113,7 @@ async def find_similar_verdicts(
     try:
         query_vector = await embed_query(query)
     except Exception:
+        logger.warning("query embedding failed, falling back to keyword search", exc_info=True)
         query_vector = None
 
     if query_vector:
@@ -122,6 +123,6 @@ async def find_similar_verdicts(
             if items:
                 return items
         except Exception:
-            pass
+            logger.warning("vector search failed, falling back to keyword search", exc_info=True)
 
     return await _keyword_fallback(db, query, limit)
