@@ -73,3 +73,8 @@ temp/
 *.tmp
 *.bak
 *.swp
+
+.worktrees/
+
+.superpowers/
+.playwright-cli/

@@ -123,24 +123,32 @@ async def create_message(
     db.add(user_message)
     await db.flush()
 
-    for file in files:
-        stored_path, size = await save_upload_file(file)
-        db.add(
-            Attachment(
-                message_id=user_message.id,
-                filename=file.filename or "file",
-                content_type=file.content_type,
-                size=size,
-                stored_path=str(stored_path),
-                extraction_status="ok",
+    stored_paths = []
+    try:
+        for file in files:
+            stored_path, size = await save_upload_file(file)
+            stored_paths.append(stored_path)
+            db.add(
+                Attachment(
+                    message_id=user_message.id,
+                    filename=file.filename or "file",
+                    content_type=file.content_type,
+                    size=size,
+                    stored_path=str(stored_path),
+                    extraction_status="ok",
+                )
             )
-        )
 
-    assistant_message = Message(chat_id=chat_id, role="assistant", status="pending")
-    db.add(assistant_message)
-    # Chat.updated_at's onupdate only fires on changes to the chat row itself.
-    await db.execute(update(Chat).where(Chat.id == chat_id).values(updated_at=func.now()))
-    await db.commit()
+        assistant_message = Message(chat_id=chat_id, role="assistant", status="pending")
+        db.add(assistant_message)
+        # Chat.updated_at's onupdate only fires on changes to the chat row itself.
+        await db.execute(update(Chat).where(Chat.id == chat_id).values(updated_at=func.now()))
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        for path in stored_paths:
+            path.unlink(missing_ok=True)
+        raise
 
     background.add_task(
         run_analysis,

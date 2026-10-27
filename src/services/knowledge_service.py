@@ -45,30 +45,10 @@ def build_chunks(raw_text: str) -> list[str]:
     if not text:
         return []
 
-    paragraphs = [
-        paragraph.strip() for paragraph in re.split(r"\n\s*\n", text) if paragraph.strip()
-    ]
-
-    chunks: list[str] = []
-    current = ""
-
-    for paragraph in paragraphs:
-        if len(current) + len(paragraph) + 1 > settings.EMBEDDING_CHUNK_SIZE and current:
-            chunks.append(current)
-            current = paragraph
-        else:
-            current = f"{current}\n{paragraph}" if current else paragraph
-
-        if len(chunks) >= settings.EMBEDDING_MAX_CHUNKS:
-            break
-
-    if current and len(chunks) < settings.EMBEDDING_MAX_CHUNKS:
-        chunks.append(current)
-
-    if not chunks:
-        chunks = [text[: settings.EMBEDDING_CHUNK_SIZE]]
-
-    return [chunk[: settings.EMBEDDING_CHUNK_SIZE] for chunk in chunks]
+    size = settings.EMBEDDING_CHUNK_SIZE
+    if size <= 0:
+        raise ValueError("EMBEDDING_CHUNK_SIZE must be positive")
+    return [text[start : start + size] for start in range(0, len(text), size)]
 
 
 async def create_knowledge_verdict_from_text(
@@ -107,7 +87,7 @@ async def create_knowledge_verdict_from_text(
 
     if chunks:
         try:
-            embeddings = await embed_passages(chunks)
+            embeddings = await embed_passages(chunks[: settings.EMBEDDING_MAX_CHUNKS])
         except Exception:
             embeddings = []
 

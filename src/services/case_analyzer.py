@@ -16,12 +16,13 @@ from src.schemas.analysis import (
     SentenceScale,
     SimilarVerdictRef,
 )
+from src.services.legal_checks import build_legal_checks
 from src.services.llm_client import LLMClient, LLMError
 from src.services.sentencing import art62_part1_limit
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_CHARS_LIMIT = 5000
+DOCUMENT_CHARS_LIMIT = 30000
 DEFAULT_QUESTION = "Подготовь проект приговора: квалификация, обстоятельства, варианты наказания."
 
 SYSTEM_PROMPT = """Ты — ассистент судьи по уголовным делам (УК РФ).
@@ -32,13 +33,21 @@ SYSTEM_PROMPT = """Ты — ассистент судьи по уголовны�
 - Сроки — целые месяцы.
 - sanction_max_months — максимальный срок лишения свободы по санкции квалифицирующей части статьи.
 - В norm указывай норму в виде «п. «и» ч. 1 ст. 61».
+- legal_facts: каждое значение сопровождай точной цитатой quote из материалов дела или вопроса.
+- Для рецидива prior_convictions: одна запись на отдельный приговор, не на статью.
+- Поля каждой записи: judgment_id (дата/номер приговора), guilt (intentional/negligent),
+  category (small/medium/grave/especially_grave), adult_at_offence, active_at_offence,
+  convicted_before_offence, imprisoned_by_sentence, conditional_or_deferred,
+  revoked_and_sent_before_offence. Все поля — объекты value/quote. Неизвестные поля пропускай.
+- history_complete=true только при явном полном описании судимостей или указании «ранее не судим».
+- category и sanction_max_months без подтверждения в материалах не заполняй.
 - Если сведений нет — null или пустой список, ничего не выдумывай."""
 
 
 def build_user_prompt(
     question: str | None, document_texts: list[str], similar_items: list[dict]
 ) -> str:
-    documents = "\n\n---\n\n".join(t[:DOCUMENT_CHARS_LIMIT] for t in document_texts if t.strip())
+    documents = "\n\n---\n\n".join(t for t in document_texts if t.strip())[:DOCUMENT_CHARS_LIMIT]
     similar = "\n".join(
         f"- {item.get('case_number') or 'без номера'}: {item.get('excerpt')}"
         for item in similar_items
@@ -77,8 +86,16 @@ def assemble_analysis(
     seconds: int,
     similar_items: list[dict],
     extra_warnings: list[str],
+    document_texts: list[str] | None = None,
 ) -> CaseAnalysis:
     warnings = list(extra_warnings)
+    context_size = len("\n\n---\n\n".join(t for t in document_texts or [] if t.strip()))
+    if context_size > DOCUMENT_CHARS_LIMIT:
+        warnings.append(
+            f"Model context limited to {DOCUMENT_CHARS_LIMIT} characters; "
+            f"{context_size - DOCUMENT_CHARS_LIMIT} characters were omitted. "
+            "This analysis does not cover the complete documents."
+        )
     scale = None
     if facts.sanction_max_months:
         limit = art62_part1_limit(facts.sanction_max_months, facts.mitigating, facts.aggravating)
@@ -98,6 +115,17 @@ def assemble_analysis(
             warnings.append("Рекомендованный срок выходит за допустимый предел — проверьте.")
 
     return CaseAnalysis(
+        legal_checks=build_legal_checks(
+            facts.legal_facts,
+            "\n".join(
+                [
+                    prompt,
+                    "\n\n---\n\n".join(t for t in document_texts or [] if t.strip())[
+                        :DOCUMENT_CHARS_LIMIT
+                    ],
+                ]
+            ),
+        ),
         stats=AnalysisStats(documents=documents, pages=pages, seconds=seconds),
         prompt=prompt,
         fabula=facts.fabula,

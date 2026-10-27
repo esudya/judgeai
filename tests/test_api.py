@@ -159,3 +159,23 @@ async def test_interrupted_analyses_are_failed_on_startup(client):
     assert await fail_interrupted_analyses() == 1
     msg = (await client.get(f"/api/chats/{chat_id}/messages/{msg_id}")).json()
     assert (msg["status"], msg["stage"], msg["error"]) == ("failed", None, INTERRUPTED_ERROR)
+
+
+async def test_rejected_second_file_cleans_first_file(client, monkeypatch, tmp_path):
+    monkeypatch.setattr("src.services.file_reader.settings.UPLOAD_DIR", str(tmp_path))
+    monkeypatch.setattr("src.services.file_reader.settings.UPLOAD_MAX_MB", 1)
+    chat_id = await _new_chat(client)
+    response = await client.post(
+        f"/api/chats/{chat_id}/messages",
+        files=[_txt(), ("files", ("big.txt", b"a" * (1024 * 1024 + 1), "text/plain"))],
+    )
+    assert response.status_code == 413
+    assert list(tmp_path.iterdir()) == []
+    assert (await client.get(f"/api/chats/{chat_id}/messages")).json() == []
+
+
+async def test_fake_analysis_is_labelled_as_development(client):
+    chat_id = await _new_chat(client)
+    await client.post(f"/api/chats/{chat_id}/messages", data={"content": "Synthetic verdict"})
+    messages = (await client.get(f"/api/chats/{chat_id}/messages")).json()
+    assert any("development" in w.lower() for w in messages[-1]["result"]["warnings"])

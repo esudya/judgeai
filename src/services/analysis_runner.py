@@ -13,6 +13,7 @@ from pathlib import Path
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
+from src.config import settings
 from src.db import session as db_session
 from src.db.models import Chat, Message
 from src.services.case_analyzer import assemble_analysis, extract_facts
@@ -56,6 +57,11 @@ async def run_analysis(
             texts: list[str] = []
             pages = 0
             warnings: list[str] = []
+            if settings.LLM_PROVIDER == "fake":
+                warnings.append(
+                    "Development mode: this is a fixed synthetic sample, not an analysis "
+                    "of the uploaded documents. Configure a real LLM for actual analysis."
+                )
             for att in user_message.attachments:
                 doc = await extract_document(Path(att.stored_path))
                 att.extracted_text = doc.text
@@ -94,6 +100,7 @@ async def run_analysis(
             seconds=round(time.monotonic() - started),
             similar_items=similar_items,
             extra_warnings=warnings,
+            document_texts=texts,
         )
 
         async with db_session.async_session_factory() as db:

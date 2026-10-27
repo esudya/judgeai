@@ -23,20 +23,20 @@ export function sanctionLabel(maxMonths: number): string {
  */
 export function SentenceScale({ scale, animated = false, legend = 'plain' }: Props) {
   const max = scale.sanctionMaxMonths;
-  const limit = pctOf(scale.limitMonths, max);
-  const [pFrom, pTo] = scale.practiceMonths;
+  const limit = pctOf(scale.limitMonths ?? 0, max);
+  const [pFrom, pTo] = scale.practiceMonths ?? [0, 0];
   const bandLeft = pctOf(pFrom, max);
   const bandWidth = pctOf(pTo, max) - bandLeft;
-  const avg = pctOf(scale.avgSimilarMonths, max);
-  const rec = pctOf(scale.recommendedMonths, max);
+  const avg = pctOf(scale.avgSimilarMonths ?? 0, max);
+  const rec = pctOf(scale.recommendedMonths ?? 0, max);
   const ticks = Array.from({ length: Math.floor(max / 12) + 1 }, (_, i) => i);
   const a = (cls: string) => (animated ? cls : undefined);
   const slideFrom = (x: string) => ({ ['--from' as string]: x }) as CSSProperties;
 
   const legendItems = [
     { swatch: 'track', text: `Санкция — ${sanctionLabel(max)}` },
-    { swatch: 'limit', text: `Предел по ${scale.limitNorm} — ${formatMonths(scale.limitMonths)}` },
-    { swatch: 'band', text: `Практика по схожим делам — ${formatMonths(pFrom)} – ${formatMonths(pTo)}` },
+    ...(scale.limitMonths !== null ? [{ swatch: 'limit', text: `Предел по ${scale.limitNorm} — ${formatMonths(scale.limitMonths)}` }] : []),
+    ...(scale.practiceMonths ? [{ swatch: 'band', text: `Практика по схожим делам — ${formatMonths(pFrom)} – ${formatMonths(pTo)}` }] : []),
   ];
 
   return (
@@ -49,21 +49,21 @@ export function SentenceScale({ scale, animated = false, legend = 'plain' }: Pro
           </span>
         )}
       </div>
-      <div className="scale-plot" role="img" aria-label={`Рекомендация ${formatMonths(scale.recommendedMonths)}, среднее по схожим делам ${formatMonths(scale.avgSimilarMonths)}, предел ${formatMonths(scale.limitMonths)}, санкция ${sanctionLabel(max)}`}>
+      <div className="scale-plot" role="img" aria-label={legendItems.map(item => item.text).join('; ')}>
         <div className="scale-track" />
-        <div className={`scale-limit ${a('grow-now') ?? ''}`} style={{ width: `${limit}%` }} />
-        <div className={`scale-band ${a('grow-now') ?? ''}`} style={{ left: `${bandLeft}%`, width: `${bandWidth}%`, animationDelay: animated ? '.45s' : undefined }} />
-        <div
+        {scale.limitMonths !== null && <div className={`scale-limit ${a('grow-now') ?? ''}`} style={{ width: `${limit}%` }} />}
+        {scale.practiceMonths && <div className={`scale-band ${a('grow-now') ?? ''}`} style={{ left: `${bandLeft}%`, width: `${bandWidth}%`, animationDelay: animated ? '.45s' : undefined }} />}
+        {scale.avgSimilarMonths !== null && <><div
           className={`scale-avg-label ${a('slide-now') ?? ''}`}
           style={{ left: `${avg}%`, ...(animated ? slideFrom(`translateX(calc(-50% - ${avg}cqw))`) : {}) }}
         >
           Среднее по схожим · {formatMonths(scale.avgSimilarMonths)}
         </div>
-        <div className={`scale-avg-dot ${a('slide-now') ?? ''}`} style={{ left: `${avg}%`, ...(animated ? slideFrom(`translateX(-${avg}cqw)`) : {}) }} />
-        <div className={`scale-rec-dot ${a('pop-now') ?? ''}`} style={{ left: `${rec}%` }} />
+        <div className={`scale-avg-dot ${a('slide-now') ?? ''}`} style={{ left: `${avg}%`, ...(animated ? slideFrom(`translateX(-${avg}cqw)`) : {}) }} /></>}
+        {scale.recommendedMonths !== null && <><div className={`scale-rec-dot ${a('pop-now') ?? ''}`} style={{ left: `${rec}%` }} />
         <div className={`scale-rec-label ${a('fade-later') ?? ''}`} style={{ left: `${rec}%` }}>
           Рекомендация · {formatMonths(scale.recommendedMonths)}
-        </div>
+        </div></>}
       </div>
       <div className="scale-ticks" aria-hidden="true">
         {ticks.map((t) => (

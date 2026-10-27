@@ -7,7 +7,7 @@ camelCase `CaseAnalysis` in its src/api/types.ts.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, StrictInt, StrictStr
 
 SCHEMA_VERSION = 1
 
@@ -55,7 +55,7 @@ class SentenceScale(ApiModel):
     limit_norm: str | None = None
     practice_months: tuple[int, int] | None = None
     avg_similar_months: int | None = None
-    recommended_months: int | None = None
+    recommended_months: int | None = Field(default=None, ge=0)
     within_sanction: bool | None = None
     extra_notes: list[str] = []
 
@@ -66,6 +66,7 @@ class DraftDocument(ApiModel):
 
 
 class CaseAnalysis(ApiModel):
+    legal_checks: list["LegalCheck"] = Field(default_factory=list)
     schema_version: Literal[1] = SCHEMA_VERSION
     stats: AnalysisStats
     prompt: str
@@ -86,12 +87,44 @@ class LlmCaseFacts(BaseModel):
     """What the LLM is asked to extract. Legal arithmetic is done in code, not by the model."""
 
     fabula: str
+    legal_facts: "LegalFacts | None" = None
     qualification: Qualification | None = None
     sanction_max_months: int | None = Field(
-        default=None, description="Max term of imprisonment in the article's sanction, months"
+        default=None, gt=0, description="Max term of imprisonment in the article's sanction, months"
     )
     mitigating: list[Circumstance] = []
     aggravating: list[Circumstance] = []
     personality: str | None = None
-    recommended_months: int | None = None
+    recommended_months: int | None = Field(default=None, ge=0)
     variants: list[PunishmentVariant] = []
+
+
+class CitedFact(BaseModel):
+    value: StrictStr | StrictInt | StrictBool
+    quote: str = Field(min_length=6, max_length=2000)
+
+
+class LegalFacts(BaseModel):
+    guilt: CitedFact | None = None
+    category: CitedFact | None = None
+    sanction_max_months: CitedFact | None = None
+    harsher_than_imprisonment: CitedFact | None = None
+    real_imprisonment: CitedFact | None = None
+    history_complete: CitedFact | None = None
+    # Each dictionary describes ONE distinct prior judgment and cites every supplied field.
+    prior_convictions: list[dict[str, CitedFact]] = Field(default_factory=list, max_length=100)
+
+
+class LegalCheck(BaseModel):
+    norm: str
+    status: Literal["ok", "possible_violation", "insufficient_data"]
+    explanation: str
+    source: str
+    value: str | None = None
+    evidence: list[str] = Field(default_factory=list)
+    needs_legal_review: bool = True
+
+
+# Resolve references declared below the backwards-compatible result classes.
+CaseAnalysis.model_rebuild()
+LlmCaseFacts.model_rebuild()

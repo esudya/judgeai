@@ -14,11 +14,11 @@ interface Props {
   onStop: () => void;
 }
 
-export const ACCEPT = '.pdf,.doc,.docx,.rtf,.jpg,.jpeg,.png';
+export const ACCEPT = '.pdf,.docx,.txt,.md';
 
 export function Composer({ mode, files, value, onChange, onFiles, onSend, onStop }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
-  const canSend = mode === 'attach' && files.length > 0;
+  const canSend = mode !== 'thinking' && (files.length > 0 || value.trim().length > 0);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -40,7 +40,7 @@ export function Composer({ mode, files, value, onChange, onFiles, onSend, onStop
           </div>
         )}
         <div className="composer-row">
-          <button type="button" className="btn btn-icon composer-attach" aria-label="Прикрепить файлы" onClick={() => fileInput.current?.click()}>
+          <button type="button" className="btn btn-icon composer-attach" aria-label="Прикрепить файлы" disabled={mode === 'thinking'} onClick={() => fileInput.current?.click()}>
             <Icon name="clip" size={18} />
           </button>
           <input ref={fileInput} type="file" multiple accept={ACCEPT} hidden onChange={(e) => onFiles(e.target.files)} />
@@ -61,7 +61,7 @@ export function Composer({ mode, files, value, onChange, onFiles, onSend, onStop
               key="stop"
               type="button"
               className="btn btn-ink btn-icon"
-              aria-label="Остановить"
+              aria-label="Keep running in background" title="Hide progress; analysis continues"
               onClick={(e) => {
                 e.preventDefault();
                 onStop();
