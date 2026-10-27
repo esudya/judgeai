@@ -7,17 +7,23 @@ The LLM only extracts facts (LlmCaseFacts). Everything that is arithmetic over t
 import json
 import logging
 
+from legal_core.entities import ArticleReference, ImposedPunishment, SanctionCeiling
+from legal_core.rules.imposed_term import check_imposed_imprisonment
+from legal_core.rules.sanction_ceiling import sanction_ceiling_for_part
 from pydantic import ValidationError
 
 from src.schemas.analysis import (
     AnalysisStats,
     CaseAnalysis,
+    LegalCheck,
     LlmCaseFacts,
     SentenceScale,
     SimilarVerdictRef,
 )
+from src.services.criminal_sanction_lookup import StatuteSanctionReading
 from src.services.legal_checks import build_legal_checks
 from src.services.llm_client import LLMClient, LLMError
+from src.services.sanction_summary import describe_main_alternatives
 from src.services.sentencing import art62_part1_limit
 
 logger = logging.getLogger(__name__)
@@ -41,6 +47,9 @@ SYSTEM_PROMPT = """Ты — ассистент судьи по уголовны�
   revoked_and_sent_before_offence. Все поля — объекты value/quote. Неизвестные поля пропускай.
 - history_complete=true только при явном полном описании судимостей или указании «ранее не судим».
 - category и sanction_max_months без подтверждения в материалах не заполняй.
+- legal_facts.imposed_imprisonment_months — срок лишения свободы, назначенный в резолютивной
+  части проекта приговора (целые месяцы; при условном осуждении тоже), quote — точный фрагмент
+  с этим сроком. legal_facts.art64_applied — true только при явной ссылке на ст. 64 УК РФ.
 - Если сведений нет — null или пустой список, ничего не выдумывай."""
 
 
@@ -87,8 +96,26 @@ def assemble_analysis(
     similar_items: list[dict],
     extra_warnings: list[str],
     document_texts: list[str] | None = None,
+    statute: StatuteSanctionReading | None = None,
 ) -> CaseAnalysis:
     warnings = list(extra_warnings)
+    ceiling = _statutory_ceiling(statute)
+    sanction_max_months = facts.sanction_max_months
+    statute_checks: list[LegalCheck] = []
+    if _single_part(statute):
+        statute_checks.append(_statute_sanction_check(statute))
+    elif statute is not None:
+        warnings.append(
+            "В квалификации не указана часть статьи — санкция по тексту УК РФ не применена."
+        )
+    if ceiling is not None and ceiling.max_imprisonment_months is not None:
+        statutory_max = ceiling.max_imprisonment_months
+        if sanction_max_months and sanction_max_months != statutory_max:
+            warnings.append(
+                f"Модель указала максимум санкции {sanction_max_months} мес., по тексту УК РФ — "
+                f"{statutory_max} мес.; использовано значение из текста УК РФ."
+            )
+        sanction_max_months = statutory_max
     context_size = len("\n\n---\n\n".join(t for t in document_texts or [] if t.strip()))
     if context_size > DOCUMENT_CHARS_LIMIT:
         warnings.append(
@@ -96,35 +123,48 @@ def assemble_analysis(
             f"{context_size - DOCUMENT_CHARS_LIMIT} characters were omitted. "
             "This analysis does not cover the complete documents."
         )
+    source_text = "\n".join(
+        [
+            prompt,
+            "\n\n---\n\n".join(t for t in document_texts or [] if t.strip())[:DOCUMENT_CHARS_LIMIT],
+        ]
+    )
+    art62_limit = (
+        art62_part1_limit(sanction_max_months, facts.mitigating, facts.aggravating)
+        if sanction_max_months
+        else None
+    )
+    if _single_part(statute):
+        statute_checks.append(
+            _imposed_term_check(statute, facts.legal_facts, source_text, art62_limit)
+        )
     scale = None
-    if facts.sanction_max_months:
-        limit = art62_part1_limit(facts.sanction_max_months, facts.mitigating, facts.aggravating)
+    if sanction_max_months:
+        limit = art62_limit
         rec = facts.recommended_months
-        cap = limit if limit is not None else facts.sanction_max_months
+        cap = limit if limit is not None else sanction_max_months
         scale = SentenceScale(
-            sanction_max_months=facts.sanction_max_months,
+            sanction_max_months=sanction_max_months,
             limit_months=limit,
             limit_norm="ч. 1 ст. 62" if limit is not None else None,
             recommended_months=rec,
             within_sanction=(rec <= cap) if rec is not None else None,
         )
-        warnings.append(
-            "Максимум санкции определён моделью и пока не сверен со справочником УК РФ."
-        )
+        if ceiling is not None and ceiling.max_imprisonment_months is not None:
+            warnings.append(_statute_warning(statute))
+        else:
+            warnings.append(
+                "Максимум санкции определён моделью и пока не сверен со справочником УК РФ."
+            )
         if rec is not None and rec > cap:
             warnings.append("Рекомендованный срок выходит за допустимый предел — проверьте.")
 
     return CaseAnalysis(
-        legal_checks=build_legal_checks(
+        legal_checks=statute_checks
+        + build_legal_checks(
             facts.legal_facts,
-            "\n".join(
-                [
-                    prompt,
-                    "\n\n---\n\n".join(t for t in document_texts or [] if t.strip())[
-                        :DOCUMENT_CHARS_LIMIT
-                    ],
-                ]
-            ),
+            source_text,
+            statutory_ceiling=ceiling,
         ),
         stats=AnalysisStats(documents=documents, pages=pages, seconds=seconds),
         prompt=prompt,
@@ -138,6 +178,75 @@ def assemble_analysis(
         variants=facts.variants,
         similar=_similar_refs(similar_items),
         warnings=warnings,
+    )
+
+
+def _single_part(statute: StatuteSanctionReading | None) -> bool:
+    return statute is not None and len({s.part for s in statute.sanctions}) == 1
+
+
+def _statutory_ceiling(statute: StatuteSanctionReading | None) -> SanctionCeiling | None:
+    if not _single_part(statute):
+        return None
+    return sanction_ceiling_for_part(statute.sanctions, statute.sanctions[0].part)
+
+
+def _statute_warning(statute: StatuteSanctionReading) -> str:
+    source = statute.provenance
+    return (
+        f"Санкция прочитана из текста УК РФ («{source.edition_label}», {source.source_url}); "
+        f"статус редакции: {source.verification_status}. Сверьте редакцию на дату деяния."
+    )
+
+
+def _statute_sanction_check(statute: StatuteSanctionReading) -> LegalCheck:
+    first = statute.sanctions[0]
+    reference = ArticleReference(article=first.article, part=first.part)
+    return LegalCheck(
+        norm=f"Санкция {reference}",
+        status="ok",
+        value=describe_main_alternatives(statute.sanctions),
+        source=statute.provenance.source_url,
+        explanation=(
+            "Основные виды наказания по тексту статьи из импортированной редакции УК РФ. "
+            "Это техническое чтение текста: редакция не проверена юристом."
+        ),
+        evidence=[first.clause],
+    )
+
+
+def _cited(fact, source_text: str, kind: type):
+    """Value of a model fact only when its quote is literally present in the materials."""
+    if fact is None or fact.quote not in source_text or type(fact.value) is not kind:
+        return None
+    return fact.value
+
+
+def _imposed_term_check(
+    statute: StatuteSanctionReading,
+    legal_facts,
+    source_text: str,
+    art62_limit: int | None,
+) -> LegalCheck:
+    imposed = _cited(getattr(legal_facts, "imposed_imprisonment_months", None), source_text, int)
+    art64 = _cited(getattr(legal_facts, "art64_applied", None), source_text, bool)
+    if imposed is not None and imposed <= 0:
+        imposed = None
+    result = check_imposed_imprisonment(
+        ImposedPunishment(imposed),
+        statute.sanctions,
+        source=statute.provenance.source_url,
+        art62_limit_months=art62_limit,
+        art64_applied=bool(art64),
+    )
+    evidence = [legal_facts.imposed_imprisonment_months.quote] if imposed is not None else []
+    return LegalCheck(
+        norm=result.norm,
+        status=result.status.value,
+        explanation=result.explanation,
+        source=result.source,
+        value=f"{imposed} мес." if imposed is not None else None,
+        evidence=evidence,
     )
 
 
