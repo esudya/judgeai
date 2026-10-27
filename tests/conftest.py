@@ -57,7 +57,9 @@ async def clean_db():
     from src.db.session import engine
 
     async with engine.begin() as conn:
-        await conn.execute(text("TRUNCATE chats, knowledge_verdicts RESTART IDENTITY CASCADE"))
+        await conn.execute(
+            text("TRUNCATE chats, knowledge_verdicts, legal_acts RESTART IDENTITY CASCADE")
+        )
     yield
 
 
