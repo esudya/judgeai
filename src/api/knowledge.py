@@ -80,10 +80,7 @@ async def list_verdicts(
     total = await db.scalar(count_stmt)
 
     stmt = (
-        base_stmt
-        .order_by(KnowledgeVerdict.created_at.desc())
-        .offset((page - 1) * size)
-        .limit(size)
+        base_stmt.order_by(KnowledgeVerdict.created_at.desc()).offset((page - 1) * size).limit(size)
     )
 
     result = await db.scalars(stmt)
@@ -105,9 +102,7 @@ async def get_verdict(verdict_id: int, db: DbSession):
         raise HTTPException(status_code=404, detail="Приговор не найден")
 
     chunks_count = await db.scalar(
-        select(func.count(KnowledgeChunk.id)).where(
-            KnowledgeChunk.verdict_id == verdict_id
-        )
+        select(func.count(KnowledgeChunk.id)).where(KnowledgeChunk.verdict_id == verdict_id)
     )
 
     return KnowledgeVerdictDetail(
