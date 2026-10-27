@@ -1,0 +1,8 @@
+node_modules
+dist
+.tmp-build
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store

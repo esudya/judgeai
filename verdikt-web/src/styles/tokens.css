@@ -1,0 +1,49 @@
+/* Design tokens extracted from the "Вердикт" canvas (Main.dc.html, Cabinet.dc.html).
+   Values are kept 1:1 with the design; see README for known contrast issues. */
+:root {
+  --font: 'Onest', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+
+  /* neutrals */
+  --ink: #141414;
+  --ink-hover: #262626;
+  --ink-2: #1f1f1f;
+  --ink-3: #333333;
+  --ink-4: #3a3a3a;
+  --bg: #ffffff;
+  --surface: #f3f3f3;
+  --surface-hover: #e9e9e9;
+  --line: #f0f0f0;
+  --line-strong: #e0e0e0;
+  --band: #cfcfcf;
+  --disabled: #d4d4d4;
+  --muted: #707070;
+  --placeholder: #8a8a8a;
+  --subtle: #adadad;
+
+  /* accents */
+  --blue: #0066ff;
+  --red: #d92d20;
+  --orange: #e5480f;
+  --green: #0f8a52;
+  --violet: #6941e8;
+  --pink: #d4359f;
+  --teal: #0a7f96;
+  --rust: #c2410c;
+
+  /* status */
+  --warn-bg: #fff7ed;
+  --warn: #b54708;
+  --danger: #b42318;
+  --danger-line: #f3c7c3;
+
+  /* radii */
+  --r-pill: 9999px;
+  --r-xl: 24px;
+  --r-lg: 16px;
+  --r-md: 14px;
+  --r-tile: 30%;
+
+  /* motion */
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+}

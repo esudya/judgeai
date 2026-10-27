@@ -1,0 +1,21 @@
+/* Pieces shared by the landing demo and the cabinet (chat bubble, cards, steps, composer). */
+.bubble { max-width: 560px; background: var(--surface); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.file-chip {
+  background: #fff; border-radius: 9999px; padding: 4px 12px 4px 4px; font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.steps { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+.steps-title { font-weight: 600; }
+.step-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.step-done { color: var(--muted); transition: color .4s ease; }
+.step-active { color: var(--ink); font-weight: 600; transition: color .4s ease; }
+.card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.card-col { display: flex; flex-direction: column; gap: 12px; }
+.card-title { margin-top: 6px; font-size: 20px; font-weight: 650; line-height: 1.25; }
+.card-sub { margin-top: 4px; font-size: 14px; color: var(--muted); }
+.doc-row { display: flex; align-items: center; gap: 12px; }
+.doc-name { font-size: 16px; font-weight: 650; line-height: 1.25; }
+.doc-meta { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.composer { background: var(--line); border-radius: 24px; padding: 10px; display: flex; flex-direction: column; }
+.composer-row { display: flex; align-items: center; gap: 8px; }
