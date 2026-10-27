@@ -1,93 +1,49 @@
-# judgeAI
+# JudgeAI
 
+Local assistant for reviewing draft criminal verdicts. The legal rules produce candidates for human review; they do not make judicial decisions.
 
+## Components
 
-## Getting started
+- `src/`: FastAPI API, document extraction, asynchronous analysis, PostgreSQL persistence and precedent search.
+- `packages/legal_core/`: dependency-free rules for art. 15 and art. 18, with sources and tests.
+- `verdikt-web/`: React cabinet using the live API; the landing page retains illustrative demo data.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Run locally
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Python 3.11+; Node 20.19+ or 22.12+; Docker Compose.
 
-## Add your files
+1. Copy `.env.example` to `.env` and configure your local database and LLM settings.
+2. For a synthetic demonstration, explicitly set `LLM_PROVIDER=fake`. This returns a fixed example, independent of the input, and the result is labelled as development data.
+3. Start the backend with `docker compose up --build`. For development/test tools, build with `docker compose build --build-arg INSTALL_DEV=true api` first.
+4. In `verdikt-web`, run `npm ci` and `npm run dev`. Open the displayed local URL and `/app`.
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+The web development server proxies `/api` to `http://localhost:8000`. Set `API_PROXY_TARGET` to use a different local API. Production hosting needs a corresponding reverse proxy; Vite's development proxy is not part of the static build.
 
-```
-cd existing_repo
-git remote add origin https://gitlab.com/judgeai/judgeai.git
-git branch -M main
-git push -uf origin main
-```
+For direct Python development, install both local packages: `pip install -e '.[dev]' -e 'packages/legal_core[dev]'`.
 
-## Integrate with your tools
+## Working flow
 
-* [Set up project integrations](https://gitlab.com/judgeai/judgeai/-/settings/integrations)
+Create a case with text and/or files -> upload originals as multipart `files` -> receive `202` -> poll messages until `completed` or `failed` -> display the stored `result`. Reloading the case restores its result. Hiding progress leaves the server analysis running. Each request includes only its own attachments; attach previous documents again to include them in a new request.
 
-## Collaborate with your team
+Supported uploads: PDF with text layer, DOCX, TXT, MD; default limit 50 MB per file. Image OCR and DOCX tables are not implemented. Extraction errors are reported in the result.
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+## Verification
 
-## Test and Deploy
+- API: `docker compose run --rm api pytest`. Tests recreate a database ending in `_test`; they must never target the working database. Set `TEST_POSTGRES_DB` to a dedicated name if other test runs exist.
+- Python lint: `ruff check src tests packages/legal_core`.
+- Core: from `packages/legal_core`, `pytest` (includes coverage threshold 80%).
+- Web: from `verdikt-web`, `npm test` (Node 22.18+ or 24 for built-in TypeScript execution), `npm run build`.
+- Browser: the Playwright CLI function files in `verdikt-web/tests/browser/` exercise a local web server at `127.0.0.1:5178` against a dedicated API/database with fake LLM. Open that URL in a named CLI session, then use `run-code --filename=...`. They create synthetic test cases. Run `local-flow.js`, `error-flow.js`, `navigation-flow.js` and `request-files-flow.js`; screenshots are saved under `/tmp/judgeai-{desktop,mobile}.png`.
 
-Use the built-in continuous integration in GitLab.
+Verified on 2026-10-27: 42 API tests, 30 core tests, core coverage 99.2%, 3 web adapter tests, production build, desktop/mobile upload/result/reload and network/404/415 flows. Browser results use the fake provider, not a real model.
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+## Explicit limits
 
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- No login or ownership isolation yet. The current API exposes a shared set of cases.
+- No anonymizer yet. A real LLM receives the supplied text; the local demonstration uses only synthetic material.
+- The model context is capped at 30,000 document characters across the request. Omitted text is reported; the result does not cover the complete documents when capped.
+- All text chunks are stored; only the first `EMBEDDING_MAX_CHUNKS` receive vectors. The currently configured embedding model is unsupported by the installed FastEmbed registry, so search uses a keyword fallback until a compatible model is configured and the corpus reindexed. Existing vector dimensions must be preserved or migrated explicitly.
+- Exact quotes establish provenance, not semantic truth. Categories, applicable law edition and prior conviction status must be checked by a person. Missing evidence or incomplete history yields `insufficient_data`.
+- Legal checks are additive fields of the existing `schema_version=1` result. No database migration is needed for this change. Installing `legal_core` is required by the API; the Dockerfile installs it.
+- Background jobs are in-process; restart marks unfinished jobs as failed. A durable queue, retry and cancellation are future work.
+- DOCX export remains an explicit disabled stub. Real LLM quality, OCR, vector relevance and production deployment are not validated by these tests.

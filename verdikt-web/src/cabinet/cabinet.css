@@ -202,3 +202,13 @@
   .thread-ai > svg { display: none; }
   .hide-sm { display: none; }
 }
+
+.cab-knowledge { display: flex; align-items: center; gap: 8px; padding: 8px 24px; font-size: 13px; color: var(--muted); }
+.cab-scroll > .warn-box { margin: 16px 24px; }
+.cab-scroll > p { padding: 24px; }
+.legal-check { border-top: 1px solid var(--line, #e5e5e5); padding: 20px 0; }
+.legal-check p, .legal-check blockquote { margin: 8px 0; }
+.legal-check blockquote { border-left: 2px solid var(--line, #e5e5e5); padding-left: 12px; overflow-wrap: anywhere; }
+.cab-dot.failed { background: var(--red); }
+
+.cab-request-note { margin: 0; padding: 8px 24px 0; font-size: 12px; color: var(--muted); }

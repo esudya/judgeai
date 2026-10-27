@@ -1,9 +1,9 @@
 # Domain Layer — value objects used by the rules.
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class Guilt(str, Enum):
+class Guilt(StrEnum):
     INTENTIONAL = "intentional"
     NEGLIGENT = "negligent"
 

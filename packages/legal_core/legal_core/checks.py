@@ -1,9 +1,9 @@
 # Domain Layer — result of a single legal check.
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class CheckStatus(str, Enum):
+class CheckStatus(StrEnum):
     OK = "ok"
     POSSIBLE_VIOLATION = "possible_violation"  # the system flags, the judge decides (п. 2.5.3)
     INSUFFICIENT_DATA = "insufficient_data"

@@ -1,6 +1,6 @@
 import type { FileExt } from '../api/types';
 
-const BG: Record<FileExt, string> = { PDF: 'var(--red)', DOC: 'var(--blue)', JPG: 'var(--muted)' };
+const BG: Record<FileExt, string> = { PDF: 'var(--red)', DOC: 'var(--blue)', JPG: 'var(--muted)', TXT: 'var(--muted)' };
 
 /** Square file-type badge ("PDF", "DOC", "JPG"); sizes follow the design (20/32/40/44 px). */
 export function FileTile({ ext, size }: { ext: FileExt; size: 20 | 32 | 40 | 44 }) {

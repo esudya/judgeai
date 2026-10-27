@@ -44,7 +44,7 @@ export function NewCaseScreen({ onFiles }: { onFiles: (list: FileList | null) =>
           <Icon name="upload" size={26} strokeWidth={1.6} />
         </span>
         <span style={{ fontWeight: 600 }}>Перетащите материалы дела или выберите файлы</span>
-        <span className="muted-14">PDF, DOCX, RTF, JPG, PNG · до 500 страниц на дело</span>
+        <span className="muted-14">PDF, DOCX, TXT, MD · 50 MB per file</span>
       </button>
       <input ref={input} type="file" multiple accept={ACCEPT} hidden onChange={(e) => onFiles(e.target.files)} />
       <div className="sug-grid">
@@ -110,12 +110,12 @@ interface Step {
   active: boolean;
 }
 
-export function ThreadScreen({ analysis, files, thinking, steps }: { analysis: CaseAnalysis; files: CaseFile[]; thinking: boolean; steps: Step[] }) {
+export function ThreadScreen({ analysis, files, thinking, steps, prompt }: { prompt?: string; analysis: CaseAnalysis | null; files: CaseFile[]; thinking: boolean; steps: Step[] }) {
   return (
     <div className="thread">
       <div className="thread-user">
         <div className="bubble">
-          <span>{analysis.prompt}</span>
+          <span>{analysis?.prompt || prompt}</span>
           <div className="chips">
             {files.slice(0, 3).map((f) => (
               <FileChip key={f.name} name={f.name} ext={f.ext} />
@@ -123,7 +123,7 @@ export function ThreadScreen({ analysis, files, thinking, steps }: { analysis: C
           </div>
         </div>
       </div>
-      {thinking ? <Thinking steps={steps} /> : <Result a={analysis} />}
+      {thinking ? <Thinking steps={steps} /> : analysis && <Result a={analysis} />}
     </div>
   );
 }
@@ -163,15 +163,16 @@ function Result({ a }: { a: CaseAnalysis }) {
           Проанализировано {documents} {plural(documents, ['документ', 'документа', 'документов'])} · {pages} {plural(pages, ['страница', 'страницы', 'страниц'])} · {seconds}{' '}
           {plural(seconds, ['секунда', 'секунды', 'секунд'])}
         </span>
+        {(a.warnings ?? []).map(w => <div key={w} className="warn-box" role="note">{w}</div>)}
         <p>{a.fabula}</p>
 
         <div className="grid-2">
-          <div className="card">
+          {a.qualification && <div className="card">
             <div className="eyebrow">Квалификация</div>
             <div className="card-title">{a.qualification.article}</div>
             <div className="card-sub">{a.qualification.title}</div>
-          </div>
-          <div className="card card-col">
+          </div>}
+          {a.draft && <div className="card card-col">
             <div className="eyebrow">Проект приговора</div>
             <div className="doc-row">
               <FileTile ext="DOC" size={44} />
@@ -181,14 +182,14 @@ function Result({ a }: { a: CaseAnalysis }) {
               </div>
             </div>
             {/* TODO(api): download link */}
-            <button type="button" className="btn btn-ink small-btn">
+            <button type="button" className="btn btn-ink small-btn" disabled title="Export is not implemented">
               <Icon name="download" size={14} strokeWidth={2.2} />
               Скачать
             </button>
-          </div>
+          </div>}
         </div>
 
-        <SentenceScale scale={a.scale} legend="plain" />
+        {a.scale && <SentenceScale scale={a.scale} legend="plain" />}
 
         <div className="grid-2">
           <div className="soft-card">
@@ -209,7 +210,7 @@ function Result({ a }: { a: CaseAnalysis }) {
           </div>
         </div>
 
-        <div className="variants">
+        {current && <div className="variants">
           <div className="variants-head">
             <span className="eyebrow" style={{ color: '#adadad' }}>
               Варианты наказания
@@ -225,9 +226,9 @@ function Result({ a }: { a: CaseAnalysis }) {
           <span className="variant-title">{current.title}</span>
           <span className="variant-details">{current.details}</span>
           <span className="variant-why">{current.rationale}</span>
-        </div>
+        </div>}
 
-        <div className="similar">
+        {a.similar.length > 0 && <div className="similar">
           <div className="similar-head">
             <span className="eyebrow">Схожие приговоры</span>
             {/* TODO(api): full list page */}
@@ -251,15 +252,22 @@ function Result({ a }: { a: CaseAnalysis }) {
           ))}
         </div>
 
+        }
+        {(a.legalChecks ?? []).map(check => <section key={check.norm} className="legal-check">
+          <div className="eyebrow">{check.norm} · {check.status === 'insufficient_data' ? 'Insufficient data' : 'Candidate · review required'}</div>
+          {check.value && <strong>{check.value.replaceAll('_', ' ')}</strong>}
+          <p>{check.explanation}</p>
+          {check.evidence.map(quote => <blockquote key={quote}>{quote}</blockquote>)}
+        </section>)}
         {/* TODO(api): follow-up prompts */}
         <div className="followups">
-          <button type="button" className="btn btn-soft btn-xs">
+          <button type="button" className="btn btn-soft btn-xs" disabled title="Not implemented">
             Сравнить с практикой региона
           </button>
-          <button type="button" className="btn btn-soft btn-xs">
+          <button type="button" className="btn btn-soft btn-xs" disabled title="Not implemented">
             Позиция защиты
           </button>
-          <button type="button" className="btn btn-soft btn-xs">
+          <button type="button" className="btn btn-soft btn-xs" disabled title="Not implemented">
             Подробнее об обстоятельствах
           </button>
         </div>

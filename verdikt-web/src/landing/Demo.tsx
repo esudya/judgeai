@@ -112,7 +112,7 @@ export function Demo() {
                     )}
                     {t >= 10500 && (
                       <div className="d-in span-all">
-                        <SentenceScale scale={mockAnalysis.scale} animated legend="swatch" />
+                        <SentenceScale scale={mockAnalysis.scale!} animated legend="swatch" />
                       </div>
                     )}
                   </div>
