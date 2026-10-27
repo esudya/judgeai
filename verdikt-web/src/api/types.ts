@@ -4,7 +4,7 @@
 //   CaseFile     ~ Attachment
 //   CaseAnalysis ~ Message.analysis (assistant message) — shape not yet agreed with backend.
 
-export type CaseStatus = 'ready' | 'busy' | 'draft';
+export type CaseStatus = 'ready' | 'busy' | 'draft' | 'failed';
 export type CaseGroup = 'Сегодня' | 'Вчера' | 'Ранее';
 
 export interface CaseSummary {
@@ -16,26 +16,26 @@ export interface CaseSummary {
   meta: string;
 }
 
-export type FileExt = 'PDF' | 'DOC' | 'JPG';
+export type FileExt = 'PDF' | 'DOC' | 'JPG' | 'TXT';
 
 export interface CaseFile {
   name: string;
   ext: FileExt;
   pages: number;
   /** "partial" = OCR could not read everything; the UI shows a warning. */
-  recognition: 'ok' | 'partial';
+  recognition: 'ok' | 'partial' | 'empty' | 'error' | 'unsupported';
 }
 
 /** All terms are in months; the scale is drawn from 0 to sanctionMaxMonths. */
 export interface SentenceScale {
   sanctionMaxMonths: number;
   /** Upper limit after mitigating rules (e.g. ч. 1 ст. 62 УК РФ). */
-  limitMonths: number;
-  limitNorm: string;
-  practiceMonths: [from: number, to: number];
-  avgSimilarMonths: number;
-  recommendedMonths: number;
-  withinSanction: boolean;
+  limitMonths: number | null;
+  limitNorm: string | null;
+  practiceMonths: [from: number, to: number] | null;
+  avgSimilarMonths: number | null;
+  recommendedMonths: number | null;
+  withinSanction: boolean | null;
   extraNotes: string[];
 }
 
@@ -54,13 +54,25 @@ export interface SimilarVerdict {
   score: number;
 }
 
+export interface LegalCheck {
+  norm: string;
+  status: 'ok' | 'possible_violation' | 'insufficient_data';
+  explanation: string;
+  source: string;
+  value: string | null;
+  evidence: string[];
+  needs_legal_review: boolean;
+}
+
 export interface CaseAnalysis {
+  warnings?: string[];
+  legalChecks?: LegalCheck[];
   stats: { documents: number; pages: number; seconds: number };
   prompt: string;
   fabula: string;
-  qualification: { article: string; title: string };
-  draft: { filename: string; note: string };
-  scale: SentenceScale;
+  qualification: { article: string; title: string } | null;
+  draft: { filename: string; note: string } | null;
+  scale: SentenceScale | null;
   mitigating: { name: string; norm: string }[];
   aggravating: string;
   personality: string;

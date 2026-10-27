@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+COPY packages/legal_core /app/packages/legal_core
+RUN pip install /app/packages/legal_core
+
 COPY pyproject.toml ./
 COPY src ./src
 RUN pip install --upgrade pip \

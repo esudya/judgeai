@@ -93,7 +93,9 @@ class CategoryChangePart6Test(unittest.TestCase):
         ]
         for original, new, ok_months, bad_months in cases:
             with self.subTest(original=original):
-                self.assertEqual(self._check(original, new, months=ok_months).status, CheckStatus.OK)
+                self.assertEqual(
+                    self._check(original, new, months=ok_months).status, CheckStatus.OK
+                )
                 self.assertEqual(
                     self._check(original, new, months=bad_months).status,
                     CheckStatus.POSSIBLE_VIOLATION,
