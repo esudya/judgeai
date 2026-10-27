@@ -47,3 +47,7 @@ Interfaces: listCases, createCase, getMessages, sendCase return Promises; explic
 2026-10-27: 42 API tests, 30 core tests, core coverage 99.2%, 3 web tests, production build and ruff pass. Browser: upload/result/reload, desktop/mobile, network/404/415 errors. Independent review found late-send navigation and cross-request attachment display; both reproduced RED then fixed GREEN with browser regressions.
 
 Decisions: schema v1 additive fields; all chunks stored but embedding work bounded; shared precedent search opt-in; fake responses labelled; each request uses its own attachments with an explicit reminder. Real LLM, vector quality, auth, anonymization and DOCX remain outside this local increment.
+
+## Продолжение по исходной концепции
+
+Этот завершённый план описывает только локальный технический этап MR !7. Он не закрывает полное соответствие концепции. Дальнейший охват и Definition of Done записаны в [CONCEPT_ALIGNMENT.md](../../CONCEPT_ALIGNMENT.md), архитектура — [ROADMAP.md](../../ROADMAP.md), исполняемый чек-лист — [TASKS.md](../../TASKS.md), включая T13–T21. Проверка уже назначенного наказания имеет приоритет перед генерацией нового приговора.
