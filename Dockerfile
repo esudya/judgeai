@@ -7,14 +7,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     EMBEDDING_CACHE_DIR=/app/.fastembed_cache
 
+# INSTALL_DEV=true adds pytest/ruff for local development and CI; production images stay lean.
+ARG INSTALL_DEV=false
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
 COPY src ./src
-
-RUN pip install --upgrade pip && pip install .
+RUN pip install --upgrade pip \
+    && if [ "$INSTALL_DEV" = "true" ]; then pip install ".[dev]"; else pip install .; fi
 
 COPY . .
 
