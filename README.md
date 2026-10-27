@@ -47,3 +47,7 @@ Verified on 2026-10-27: 42 API tests, 30 core tests, core coverage 99.2%, 3 web 
 - Legal checks are additive fields of the existing `schema_version=1` result. No database migration is needed for this change. Installing `legal_core` is required by the API; the Dockerfile installs it.
 - Background jobs are in-process; restart marks unfinished jobs as failed. A durable queue, retry and cancellation are future work.
 - DOCX export remains an explicit disabled stub. Real LLM quality, OCR, vector relevance and production deployment are not validated by these tests.
+
+## Legal-source library
+
+The criminal-pilot source library, additive migration, trusted import commands, read-only API and local corpus counts are documented in [docs/LEGAL_LIBRARY.md](docs/LEGAL_LIBRARY.md). Technical import is deliberately separate from legal verification: unreviewed sources cannot answer a verified date lookup. No automatic switch of the existing analysis engine to unreviewed legislation is performed.

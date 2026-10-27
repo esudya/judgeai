@@ -110,3 +110,7 @@ class KnowledgeChunk(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     verdict: Mapped["KnowledgeVerdict"] = relationship(back_populates="chunks")
+
+
+# Register the public legal corpus in the same metadata used by Alembic.
+from src.db.legal_library import LegalAct, LegalEdition, LegalProvision, LegalRuleReference  # noqa: E402,F401

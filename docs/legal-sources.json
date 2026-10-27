@@ -1,0 +1,98 @@
+[
+  {
+    "key": "uk-rf",
+    "title": "Уголовный кодекс Российской Федерации",
+    "kind": "code",
+    "source_url": "http://pravo.gov.ru/proxy/ips/?savertf=&nd=102041891&page=all",
+    "sha256": "0243481c50d996a3bddd041854f49077bd34fde17734e63735b87e16f4a34d7b",
+    "retrieved_at": "2026-10-27T20:57:54Z",
+    "units": 538,
+    "characters": 1039807,
+    "verification_status": "unreviewed",
+    "label": "Официальная выгрузка; карточка указывает изменение от 04.08.2026 № 300-ФЗ; периоды действия не проверены"
+  },
+  {
+    "key": "upk-rf",
+    "title": "Уголовно-процессуальный кодекс Российской Федерации",
+    "kind": "code",
+    "source_url": "http://pravo.gov.ru/proxy/ips/?savertf=&nd=102073942&page=all",
+    "sha256": "10129967ebb0c7ffccf5b543473cfbd034b3507b2bc46b5aaff3753455a0449a",
+    "retrieved_at": "2026-10-27T20:57:55Z",
+    "units": 561,
+    "characters": 1085746,
+    "verification_status": "unreviewed",
+    "label": "Официальная выгрузка; редакция и периоды действия требуют сверки"
+  },
+  {
+    "key": "constitution-rf",
+    "title": "Конституция Российской Федерации",
+    "kind": "constitution",
+    "source_url": "http://www.kremlin.ru/acts/constitution/item",
+    "sha256": "35379ff7e7deb68ac68c14b8a0208e1b87fd4146fa48f4ade867abecb8fcf6bd",
+    "retrieved_at": "2026-10-27T20:55:59Z",
+    "units": 144,
+    "characters": 125558,
+    "verification_status": "unreviewed",
+    "label": "Официальная страница; редакция и периоды действия требуют сверки"
+  },
+  {
+    "key": "vs-plenum-2015-58",
+    "title": "О практике назначения судами Российской Федерации уголовного наказания",
+    "kind": "plenum",
+    "source_url": "https://www.vsrf.ru/media-proxy/upload/iblock/aca/tozewdcjp1nkjyu6dvx0cgq710g21f7m.pdf?__download=1&__filename=%D0%9F%D0%BB2015-58_%D1%80%D0%B5%D0%B4_23_%D0%B4%D0%B5%D0%BA%D0%B0%D0%B1%D1%80%D1%8F_2025.pdf",
+    "sha256": "3e244ff596b2a779fc32d5f61aa6567680f7a52540b9ab3c7f0be73753b77c7b",
+    "retrieved_at": "2026-10-27T20:56:00Z",
+    "units": 29,
+    "characters": 78378,
+    "verification_status": "unreviewed",
+    "label": "Официальный файл: ред. 23.12.2025; периоды действия требуют сверки"
+  },
+  {
+    "key": "vs-plenum-2025-40",
+    "title": "О внесении изменений в постановление Пленума Верховного Суда Российской Федерации от 22 декабря 2015 года № 58",
+    "kind": "plenum",
+    "source_url": "https://www.vsrf.ru/media-proxy/upload/iblock/b7a/m53z86p2e91w4iryvbkuys44qn1howwf.pdf?__download=1&__filename=40_%D0%9F%D0%BB_2025_%D0%98%D0%9F%D0%9F_%D0%92%D0%A1_%D0%A0%D0%A4_%D0%BD%D0%B0%D0%BA%D0%B0%D0%B7%D0%B0%D0%BD%D0%B8%D0%B5_2_%D0%98%D0%A2%D0%9E%D0%93.pdf",
+    "sha256": "fafae11a7047fdc2b333f64443fc20c86684d9c13d83f528621faf7227ee56a4",
+    "retrieved_at": "2026-10-27T20:56:00Z",
+    "units": 13,
+    "characters": 32131,
+    "verification_status": "unreviewed",
+    "label": "Официальный акт о внесении изменений; юридическая сверка не завершена"
+  },
+  {
+    "key": "vs-plenum-2016-55",
+    "title": "О судебном приговоре",
+    "kind": "plenum",
+    "source_url": "https://www.vsrf.ru/media-proxy/upload/iblock/1c7/nobp5aw5xjlslshup1cpxhikrcter32e.pdf?__download=1&__filename=%D0%9F%D0%BB2016-55.pdf",
+    "sha256": "4ddd0e63c02b020b0d686ae29f00390e05176e93358d8a0cf590c02b6938b584",
+    "retrieved_at": "2026-10-27T21:01:19Z",
+    "units": 16,
+    "characters": 41484,
+    "verification_status": "unreviewed",
+    "label": "Официальный файл; редакция и периоды действия требуют сверки"
+  },
+  {
+    "key": "vs-plenum-2022-14",
+    "title": "О практике применения судами при рассмотрении уголовных дел законодательства, регламентирующего исчисление срока погашения и порядок снятия судимости",
+    "kind": "plenum",
+    "source_url": "https://www.vsrf.ru/media-proxy/upload/iblock/1c7/1c70134b732501bae3e0483046c92f5f.pdf?__download=1&__filename=14_%D0%9F%D0%BB_2022_86_%D0%A3%D0%9A_%D0%A0%D0%A4_%D0%B8%D1%82%D0%BE%D0%B3.pdf",
+    "sha256": "7d43c6e377a5592c6d9b4b2f222c03e01b707d4582a5c18c0666376e2498d3ff",
+    "retrieved_at": "2026-10-27T21:03:26Z",
+    "units": 8,
+    "characters": 19234,
+    "verification_status": "unreviewed",
+    "label": "Официальный файл; редакция и периоды действия требуют сверки"
+  },
+  {
+    "key": "vs-plenum-2014-9",
+    "title": "О практике назначения и изменения судами видов исправительных учреждений",
+    "kind": "plenum",
+    "source_url": "https://www.vsrf.ru/media-proxy/upload/iblock/335/yrkwzh7mrrkng93c3dht186vhu5qthgn.pdf?__download=1&__filename=%D0%9F%D0%BB2014-09_%D1%80%D0%B5%D0%B4_26_%D0%BD%D0%BE%D1%8F%D0%B1%D1%80%D1%8F_2024.pdf",
+    "sha256": "3d8e7b726f68ef3172f859e8ee88320d5102a2e94c13298ef8d9d6f8c37ed73a",
+    "retrieved_at": "2026-10-27T21:04:52Z",
+    "units": 15,
+    "characters": 37822,
+    "verification_status": "unreviewed",
+    "label": "Официальный файл: ред. 26.11.2024; периоды действия требуют сверки"
+  }
+]
