@@ -26,7 +26,12 @@ def _value(fact: CitedFact | None, text: str, kind: type):
     return fact.value
 
 
-def build_legal_checks(facts: LegalFacts | None, source_text: str) -> list[LegalCheck]:
+def build_legal_checks(
+    facts: LegalFacts | None,
+    source_text: str,
+    statutory_ceiling: SanctionCeiling | None = None,
+) -> list[LegalCheck]:
+    """statutory_ceiling comes from the imported УК РФ text; it replaces model-cited sanctions."""
     results = []
     for norm, source in [("ст. 15 УК РФ", ART15_SOURCE), ("ст. 18 УК РФ", ART18_SOURCE)]:
         check = LegalCheck(
@@ -41,11 +46,18 @@ def build_legal_checks(facts: LegalFacts | None, source_text: str) -> list[Legal
             guilt = Guilt(_value(facts.guilt, source_text, str))
             evidence = [facts.guilt.quote]
             if norm == "ст. 15 УК РФ":
-                months = _value(facts.sanction_max_months, source_text, int)
-                harsher = _value(facts.harsher_than_imprisonment, source_text, bool)
-                category = categorize(guilt, SanctionCeiling(months, harsher))
+                if statutory_ceiling is not None:
+                    ceiling = statutory_ceiling
+                else:
+                    months = _value(facts.sanction_max_months, source_text, int)
+                    harsher = _value(facts.harsher_than_imprisonment, source_text, bool)
+                    ceiling = SanctionCeiling(months, harsher)
+                    evidence += [
+                        facts.sanction_max_months.quote,
+                        facts.harsher_than_imprisonment.quote,
+                    ]
+                category = categorize(guilt, ceiling)
                 check.value = next(key for key, val in _CATEGORIES.items() if val == category)
-                evidence += [facts.sanction_max_months.quote, facts.harsher_than_imprisonment.quote]
                 check.explanation = (
                     "Candidate category from cited inputs. Verify the statutory sanction, "
                     "the offence date and the applicable law edition."

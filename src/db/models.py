@@ -112,5 +112,6 @@ class KnowledgeChunk(Base):
     verdict: Mapped["KnowledgeVerdict"] = relationship(back_populates="chunks")
 
 
-# Register the public legal corpus in the same metadata used by Alembic.
+# Register the public legal corpus and derived sanctions in the metadata used by Alembic.
+from src.db.criminal_sanctions import CriminalArticleSanction  # noqa: E402,F401
 from src.db.legal_library import LegalAct, LegalEdition, LegalProvision, LegalRuleReference  # noqa: E402,F401
