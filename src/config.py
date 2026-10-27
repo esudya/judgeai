@@ -16,9 +16,10 @@ class Settings(BaseSettings):
     UPLOAD_MAX_MB: int = 50
     UPLOAD_ALLOWED_EXTENSIONS: str = ".pdf,.docx,.txt,.md"
 
-    # "openai" = any OpenAI-compatible /chat/completions endpoint; "fake" = deterministic
-    # local stub for development and tests (never silently used as a fallback).
-    LLM_PROVIDER: Literal["openai", "fake"] = "openai"
+    # "openai" = any OpenAI-compatible /chat/completions endpoint; "deepseek_web" = local
+    # DeepSeek web proxy (dev only); "fake" = deterministic local stub for development and
+    # tests (never silently used as a fallback).
+    LLM_PROVIDER: Literal["openai", "deepseek_web", "fake"] = "openai"
     LLM_API_BASE: str = "https://api.openai.com/v1"
     LLM_API_KEY: str | None = None
     LLM_MODEL: str = "gpt-4o-mini"
