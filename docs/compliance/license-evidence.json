@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-10-28",
+  "scope": "Upstream license files reviewed; installed Python distributions unresolved",
+  "python": [
+    {
+      "name": "alembic",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/sqlalchemy/alembic/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/sqlalchemy/alembic",
+      "evidence_git_blob": "b03e235f9a94f5893b5d33eb8756eee57a26853f",
+      "evidence_blob_url": "https://api.github.com/repos/sqlalchemy/alembic/git/blobs/b03e235f9a94f5893b5d33eb8756eee57a26853f",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "asyncpg",
+      "license_expression": "Apache-2.0",
+      "evidence_url": "https://github.com/MagicStack/asyncpg/blob/master/LICENSE",
+      "upstream_repository": "https://github.com/MagicStack/asyncpg",
+      "evidence_git_blob": "d931386122bbcedb3bd8a39345d034ff836ed467",
+      "evidence_blob_url": "https://api.github.com/repos/MagicStack/asyncpg/git/blobs/d931386122bbcedb3bd8a39345d034ff836ed467",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "fastapi",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/fastapi/fastapi/blob/master/LICENSE",
+      "upstream_repository": "https://github.com/fastapi/fastapi",
+      "evidence_git_blob": "3e92463e6bd522a2a21e5f0a80d8089d6c4be20d",
+      "evidence_blob_url": "https://api.github.com/repos/fastapi/fastapi/git/blobs/3e92463e6bd522a2a21e5f0a80d8089d6c4be20d",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "fastembed",
+      "license_expression": "Apache-2.0",
+      "evidence_url": "https://github.com/qdrant/fastembed/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/qdrant/fastembed",
+      "evidence_git_blob": "456fb05e0e936f439cf42c517b19797dafd53ff9",
+      "evidence_blob_url": "https://api.github.com/repos/qdrant/fastembed/git/blobs/456fb05e0e936f439cf42c517b19797dafd53ff9",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "httpx",
+      "license_expression": "BSD-3-Clause",
+      "evidence_url": "https://github.com/encode/httpx/blob/master/LICENSE.md",
+      "upstream_repository": "https://github.com/encode/httpx",
+      "evidence_git_blob": "ab79d16a3f4c6c894c028d1f7431811e8711b42b",
+      "evidence_blob_url": "https://api.github.com/repos/encode/httpx/git/blobs/ab79d16a3f4c6c894c028d1f7431811e8711b42b",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pdfplumber",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/jsvine/pdfplumber/blob/stable/LICENSE.txt",
+      "upstream_repository": "https://github.com/jsvine/pdfplumber",
+      "evidence_git_blob": "3300ee1ec31dbb2beb6b516bbde4ce8db63d4169",
+      "evidence_blob_url": "https://api.github.com/repos/jsvine/pdfplumber/git/blobs/3300ee1ec31dbb2beb6b516bbde4ce8db63d4169",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pgvector",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pgvector/pgvector-python/blob/master/LICENSE.txt",
+      "upstream_repository": "https://github.com/pgvector/pgvector-python",
+      "evidence_git_blob": "17e521082f88f9da67508493fb262798146eadf4",
+      "evidence_blob_url": "https://api.github.com/repos/pgvector/pgvector-python/git/blobs/17e521082f88f9da67508493fb262798146eadf4",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pydantic",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pydantic/pydantic/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/pydantic/pydantic",
+      "evidence_git_blob": "488c6260c10f2e88fa1fae58a63fccec8d600cd1",
+      "evidence_blob_url": "https://api.github.com/repos/pydantic/pydantic/git/blobs/488c6260c10f2e88fa1fae58a63fccec8d600cd1",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pydantic-settings",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pydantic/pydantic-settings/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/pydantic/pydantic-settings",
+      "evidence_git_blob": "d90598f2a8740731fa4c637870bd1f8a1a23bfb4",
+      "evidence_blob_url": "https://api.github.com/repos/pydantic/pydantic-settings/git/blobs/d90598f2a8740731fa4c637870bd1f8a1a23bfb4",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pytest",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pytest-dev/pytest/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/pytest-dev/pytest",
+      "evidence_git_blob": "c3f1657fce94589bd1ec7cead810639047f3d359",
+      "evidence_blob_url": "https://api.github.com/repos/pytest-dev/pytest/git/blobs/c3f1657fce94589bd1ec7cead810639047f3d359",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pytest-asyncio",
+      "license_expression": "Apache-2.0",
+      "evidence_url": "https://github.com/pytest-dev/pytest-asyncio/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/pytest-dev/pytest-asyncio",
+      "evidence_git_blob": "5c304d1a4a7b439f767990bf1360d3283e45d0ee",
+      "evidence_blob_url": "https://api.github.com/repos/pytest-dev/pytest-asyncio/git/blobs/5c304d1a4a7b439f767990bf1360d3283e45d0ee",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "pytest-cov",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pytest-dev/pytest-cov/blob/master/LICENSE",
+      "upstream_repository": "https://github.com/pytest-dev/pytest-cov",
+      "evidence_git_blob": "5b3634b4a49bb7016910e5a3d8d5467f4c1fa350",
+      "evidence_blob_url": "https://api.github.com/repos/pytest-dev/pytest-cov/git/blobs/5b3634b4a49bb7016910e5a3d8d5467f4c1fa350",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "python-docx",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/python-openxml/python-docx/blob/master/LICENSE",
+      "upstream_repository": "https://github.com/python-openxml/python-docx",
+      "evidence_git_blob": "67ebe716ec4b2d64d6146b5e7cecd77ac7af9b79",
+      "evidence_blob_url": "https://api.github.com/repos/python-openxml/python-docx/git/blobs/67ebe716ec4b2d64d6146b5e7cecd77ac7af9b79",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "python-multipart",
+      "license_expression": "Apache-2.0",
+      "evidence_url": "https://github.com/Kludex/python-multipart/blob/main/LICENSE.txt",
+      "upstream_repository": "https://github.com/Kludex/python-multipart",
+      "evidence_git_blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "evidence_blob_url": "https://api.github.com/repos/Kludex/python-multipart/git/blobs/d645695673349e3947e8e5ae42332d0ac3164cd7",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "ruff",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/astral-sh/ruff/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/astral-sh/ruff",
+      "evidence_git_blob": "655a0c76fc5539b2f8e63b673741a5fd0e0c5799",
+      "evidence_blob_url": "https://api.github.com/repos/astral-sh/ruff/git/blobs/655a0c76fc5539b2f8e63b673741a5fd0e0c5799",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": "Retain embedded third-party notices from the full upstream LICENSE."
+    },
+    {
+      "name": "setuptools",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pypa/setuptools/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/pypa/setuptools",
+      "evidence_git_blob": "1bb5a44356f00884a71ceeefd24ded6caaba2418",
+      "evidence_blob_url": "https://api.github.com/repos/pypa/setuptools/git/blobs/1bb5a44356f00884a71ceeefd24ded6caaba2418",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "sqlalchemy",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/sqlalchemy/sqlalchemy/blob/main/LICENSE",
+      "upstream_repository": "https://github.com/sqlalchemy/sqlalchemy",
+      "evidence_git_blob": "903d67495fc6c2017713c754cf16b8f179122ed2",
+      "evidence_blob_url": "https://api.github.com/repos/sqlalchemy/sqlalchemy/git/blobs/903d67495fc6c2017713c754cf16b8f179122ed2",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "uvicorn",
+      "license_expression": "BSD-3-Clause",
+      "evidence_url": "https://github.com/Kludex/uvicorn/blob/main/LICENSE.md",
+      "upstream_repository": "https://github.com/Kludex/uvicorn",
+      "evidence_git_blob": "a6bba14552c7673a7db57a5750ddb06508264273",
+      "evidence_blob_url": "https://api.github.com/repos/Kludex/uvicorn/git/blobs/a6bba14552c7673a7db57a5750ddb06508264273",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    },
+    {
+      "name": "wheel",
+      "license_expression": "MIT",
+      "evidence_url": "https://github.com/pypa/wheel/blob/main/LICENSE.txt",
+      "upstream_repository": "https://github.com/pypa/wheel",
+      "evidence_git_blob": "a31470f14c5978d5fcc3bc173b8399b6c9a6443f",
+      "evidence_blob_url": "https://api.github.com/repos/pypa/wheel/git/blobs/a31470f14c5978d5fcc3bc173b8399b6c9a6443f",
+      "applies_to": "upstream-source-not-resolved-distribution",
+      "notice": null
+    }
+  ]
+}

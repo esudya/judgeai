@@ -1,0 +1,7 @@
+---
+description: JudgeAI architecture, reuse, tests and truthful plan progress
+alwaysApply: true
+---
+
+Follow the canonical project engineering rules in `AGENTS.md`.
+Record all tasks, subtasks, verified progress, checks, blockers and remaining work in `docs/TASKS.md`, the sole authoritative status register.
