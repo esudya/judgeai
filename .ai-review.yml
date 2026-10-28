@@ -1,0 +1,53 @@
+# AI review settings for judgeai (reviewer: judgeai/ai-review).
+# Project rules for the reviewer come from AGENTS.md.
+test_command: pytest tests tests_uploads tests_uploads_http
+provider: openai
+base_url: https://api.openai.com/v1
+model: gpt-5.4-mini-2026-03-17
+model_high_risk: gpt-5.5-2026-04-23
+
+# The stronger model reads only code where a mistake is expensive and hard to see in
+# tests: sentencing and recidivism rules, schema migrations, access control and the
+# upload guard that stands between user files and the parsers.
+high_risk_paths:
+  - packages/legal_core/legal_core/*
+  - packages/legal_core/legal_core/rules/*
+  - alembic/versions/*
+  - src/api/deps.py
+  - src/services/auth.py
+  - src/services/auth_tokens.py
+  - src/services/analysis_access.py
+  - src/domain/uploads.py
+  - src/infrastructure/docx_inspector.py
+
+# Statements that narrow the schema or delete data, wherever they are written.
+high_risk_content:
+  - 'DROP\s+(TABLE|COLUMN|INDEX)'
+  - 'ALTER\s+COLUMN'
+  - 'RENAME\s+(COLUMN|TO)'
+  - 'DELETE\s+FROM'
+  - 'TRUNCATE'
+  - 'op\.drop_'
+
+# A merge request that changes only documentation is not reviewed.
+skip_paths:
+  - '*.md'
+  - 'docs/**'
+
+# Built by tools/dependency_inventory.py; the CI inventory job checks it is fresh.
+generated_paths:
+  - docs/compliance/sbom.cdx.json
+
+limits:
+  max_files: 60
+  max_changed_lines: 6000
+
+pricing:
+  gpt-5.4-mini-2026-03-17:
+    input: 0.75
+    output: 4.50
+    cached_input: 0.075
+  gpt-5.5-2026-04-23:
+    input: 5.00
+    output: 30.00
+    cached_input: 0.50

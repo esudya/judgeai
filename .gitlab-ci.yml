@@ -1,3 +1,14 @@
+# AI review of every merge request (reviewer: judgeai/ai-review, settings: .ai-review.yml).
+# Shadow mode (allow_failure: true) until OPENAI_API_KEY or ANTHROPIC_API_KEY and
+# AI_REVIEW_GITLAB_TOKEN are set as masked CI variables and the first runs are checked;
+# then switch to false so an open finding blocks the merge.
+include:
+  - project: judgeai/ai-review
+    ref: main
+    file: templates/ai-review.yml
+    inputs:
+      allow_failure: true
+
 # Source inventory checks only; API and database verification remain separate.
 workflow:
   rules:
