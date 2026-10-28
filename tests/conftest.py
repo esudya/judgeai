@@ -58,7 +58,10 @@ async def clean_db():
 
     async with engine.begin() as conn:
         await conn.execute(
-            text("TRUNCATE chats, knowledge_verdicts, legal_acts RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE chats, knowledge_verdicts, legal_acts, users, auth_login_buckets "
+                "RESTART IDENTITY CASCADE"
+            )
         )
     yield
 
@@ -76,8 +79,19 @@ def no_embeddings(monkeypatch):
 
 @pytest.fixture
 async def client():
+    from src.db.auth import User
+    from src.db.session import async_session_factory
     from src.main import app
+    from src.services.auth import create_session
+    from src.services.auth_tokens import csrf_for
 
+    async with async_session_factory() as db:
+        user = User(username="test-admin", is_admin=True)
+        db.add(user)
+        await db.commit()
+        token = await create_session(db, user)
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+    async with httpx.AsyncClient(transport=transport, base_url="https://test") as c:
+        c.cookies.set("judgeai_session", token)
+        c.headers["X-CSRF-Token"] = csrf_for(token)
         yield c

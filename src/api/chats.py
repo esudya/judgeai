@@ -3,7 +3,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.api.deps import DbSession
+from src.api.deps import CurrentUser, DbSession
 from src.db.models import Attachment, Chat, Message
 from src.schemas.chat import ChatCreate, ChatRead, ChatStatus
 from src.schemas.message import MessageRead, MessageSendResponse
@@ -51,15 +51,21 @@ def _chat_read(chat: Chat, status: ChatStatus) -> ChatRead:
 
 
 @router.get("", response_model=list[ChatRead])
-async def list_chats(db: DbSession):
-    chats = (await db.scalars(select(Chat).order_by(Chat.updated_at.desc(), Chat.id.desc()))).all()
+async def list_chats(db: DbSession, user: CurrentUser):
+    chats = (
+        await db.scalars(
+            select(Chat)
+            .where(Chat.owner_id == user.user_id)
+            .order_by(Chat.updated_at.desc(), Chat.id.desc())
+        )
+    ).all()
     statuses = await _chat_statuses(db, [c.id for c in chats])
     return [_chat_read(c, statuses.get(c.id, "draft")) for c in chats]
 
 
 @router.post("", response_model=ChatRead, status_code=201)
-async def create_chat(payload: ChatCreate, db: DbSession):
-    chat = Chat(title=payload.title)
+async def create_chat(payload: ChatCreate, db: DbSession, user: CurrentUser):
+    chat = Chat(title=payload.title, owner_id=user.user_id)
     db.add(chat)
     await db.commit()
     await db.refresh(chat)
@@ -67,8 +73,8 @@ async def create_chat(payload: ChatCreate, db: DbSession):
 
 
 @router.get("/{chat_id}", response_model=ChatRead)
-async def get_chat(chat_id: int, db: DbSession):
-    chat = await db.get(Chat, chat_id)
+async def get_chat(chat_id: int, db: DbSession, user: CurrentUser):
+    chat = await db.scalar(select(Chat).where(Chat.id == chat_id, Chat.owner_id == user.user_id))
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
     statuses = await _chat_statuses(db, [chat.id])
@@ -76,8 +82,8 @@ async def get_chat(chat_id: int, db: DbSession):
 
 
 @router.get("/{chat_id}/messages", response_model=list[MessageRead])
-async def list_messages(chat_id: int, db: DbSession):
-    chat = await db.get(Chat, chat_id)
+async def list_messages(chat_id: int, db: DbSession, user: CurrentUser):
+    chat = await db.scalar(select(Chat).where(Chat.id == chat_id, Chat.owner_id == user.user_id))
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
 
@@ -92,8 +98,11 @@ async def list_messages(chat_id: int, db: DbSession):
 
 
 @router.get("/{chat_id}/messages/{message_id}", response_model=MessageRead)
-async def get_message(chat_id: int, message_id: int, db: DbSession):
+async def get_message(chat_id: int, message_id: int, db: DbSession, user: CurrentUser):
     """Poll target while an analysis is running (status / stage / result)."""
+    chat = await db.scalar(select(Chat).where(Chat.id == chat_id, Chat.owner_id == user.user_id))
+    if chat is None:
+        raise HTTPException(404, "Case not found")
     message = await load_message(db, message_id)
     if message.chat_id != chat_id:
         raise HTTPException(status_code=404, detail="Сообщение не найдено")
@@ -105,15 +114,18 @@ async def create_message(
     chat_id: int,
     db: DbSession,
     background: BackgroundTasks,
+    user: CurrentUser,
     content: str | None = Form(None),
-    use_knowledge_base: bool = Form(True),
+    use_knowledge_base: bool = Form(False),
     save_to_knowledge_base: bool = Form(False),
     files: list[UploadFile] = File(default_factory=list),
 ):
     """Store the request and files, then analyse in the background (202 + poll)."""
-    chat = await db.get(Chat, chat_id)
+    chat = await db.scalar(select(Chat).where(Chat.id == chat_id, Chat.owner_id == user.user_id))
     if not chat:
         raise HTTPException(status_code=404, detail="Чат не найден")
+    if (use_knowledge_base or save_to_knowledge_base) and not user.is_admin:
+        raise HTTPException(403, "Shared precedent library requires administrator access")
     if not (content and content.strip()) and not files:
         raise HTTPException(status_code=422, detail="Нужен текст запроса или хотя бы один файл")
     for file in files:  # reject the whole request before writing anything
@@ -139,7 +151,9 @@ async def create_message(
                 )
             )
 
-        assistant_message = Message(chat_id=chat_id, role="assistant", status="pending")
+        assistant_message = Message(
+            chat_id=chat_id, role="assistant", status="pending", request_message_id=user_message.id
+        )
         db.add(assistant_message)
         # Chat.updated_at's onupdate only fires on changes to the chat row itself.
         await db.execute(update(Chat).where(Chat.id == chat_id).values(updated_at=func.now()))
@@ -154,6 +168,7 @@ async def create_message(
         run_analysis,
         user_message.id,
         assistant_message.id,
+        user=user,
         save_to_knowledge_base=save_to_knowledge_base,
         use_knowledge_base=use_knowledge_base,
     )

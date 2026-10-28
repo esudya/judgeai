@@ -6,6 +6,7 @@ import { Link } from '../router';
 
 interface Props {
   cases: CaseSummary[];
+  username: string;
   activeId: string | null;
   thinking: boolean;
   settingsActive: boolean;
@@ -17,7 +18,7 @@ interface Props {
   onSettings: () => void;
 }
 
-export function Sidebar({ cases, activeId, thinking, settingsActive, open, onClose, onNew, onPick, onSettings }: Props) {
+export function Sidebar({ username, cases, activeId, thinking, settingsActive, open, onClose, onNew, onPick, onSettings }: Props) {
   const asideRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -77,11 +78,11 @@ export function Sidebar({ cases, activeId, thinking, settingsActive, open, onClo
 
         <button type="button" className={`cab-row cab-profile ${settingsActive ? 'on' : ''}`} onClick={onSettings} aria-label="Настройки аккаунта">
           <span className="avatar" aria-hidden="true">
-            ИП
+            {username.slice(0, 2).toUpperCase()}
           </span>
           <span className="cab-row-text">
-            <span className="cab-row-title">[Имя пользователя]</span>
-            <span className="cab-row-meta">[Должность]</span>
+            <span className="cab-row-title">{username}</span>
+            <span className="cab-row-meta">Workspace account</span>
           </span>
           <Icon name="gear" size={18} color="#707070" />
         </button>
