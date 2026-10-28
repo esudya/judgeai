@@ -94,7 +94,7 @@
 - [x] Опубликован [Draft MR !17](https://gitlab.com/judgeai/judgeai/-/merge_requests/17), целевая ветка feat/T19-inventory; реализация 23fd48ee.
 - [ ] Полный PostgreSQL API regression suite перед слиянием. Docker-проверки блокированы ранее полученным отказом automatic approval из-за лимита аккаунта; повторного обхода/эскалации нет. PDF, параллельная нагрузка, Strict/custom layout и полная privacy-проверка остаются открытыми. Не мигрировать/не развёртывать/не сливать автоматически.
 
-### T19.1 — проверка реестра зависимостей в GitLab CI, начато 28.10.2026
+### T19.1 — проверка реестра зависимостей в GitLab CI, реализация проверена 28.10.2026
 
 **Цель/границы:** запускать существующие автономные тесты и read-only `dependency_inventory.py --check` для веток/MR/default branch. Код продукта, БД, frontend и T24–T27 не меняются; T19 целиком не закрывается. Изолированная ветка feat/T19-inventory-ci от T19 (!16); от DOCX-кода !17 не зависит.
 
@@ -108,7 +108,8 @@
 - [x] Полный API/PostgreSQL suite не запускался: код приложения не менялся; тестовый conftest пересоздаёт БД и требует недоступного сейчас Docker. Эта ветка подтверждает только реестр исходных деклараций, не готовность всего продукта.
 - [x] Использованы upstream инструкции [workflow](https://docs.gitlab.com/ci/yaml/workflow/) и [job rules](https://docs.gitlab.com/ci/jobs/job_rules/); локальный YAML parser не заменяет GitLab CI lint.
 - [x] Независимое read-only ревью проверило конфигурацию и тела генератора/12 тестов; actionable findings нет. Повторный тестовый прогон и --check зелёные.
-- [ ] Draft MR и доступный удалённый CI; зафиксировать блокировки, не сливать автоматически.
+- [x] Создан [Draft MR !18](https://gitlab.com/judgeai/judgeai/-/merge_requests/18) в родительскую ветку !16, код 8ea4f632. GitLab принял YAML; [pipeline 2996998760](https://gitlab.com/judgeai/judgeai/-/pipelines/2996998760) и blocking job inventory завершились success на shared Linux/amd64 runner (12,27 с). Хеш .gitlab-ci.yml совпал с опубликованным blob.
+- [ ] После обновления журнала проверить MR pipeline на последнем SHA. Проверка default branch/tag правил отдельно не запускалась; выделенный CI lint API недоступен в коннекторе. Полная T19 и интеграция !16/!18 остаются открытыми; слияние/развёртывание не выполнялись.
 
 ## Постоянные правила выполнения
 
