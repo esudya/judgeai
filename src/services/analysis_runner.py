@@ -17,9 +17,11 @@ from src.config import settings
 from src.db import session as db_session
 from src.db.models import Chat, Message
 from src.services.case_analyzer import assemble_analysis, extract_facts
+from src.services.criminal_sanction_lookup import find_article_sanctions
 from src.services.document_parser import extract_document
 from src.services.knowledge_service import create_knowledge_verdict_from_text
 from src.services.llm_client import LLMError, get_llm_client
+from src.services.qualification_reference import parse_qualification_reference
 from src.services.similarity_search import find_similar_verdicts
 
 logger = logging.getLogger(__name__)
@@ -92,6 +94,15 @@ async def run_analysis(
         facts = await extract_facts(get_llm_client(), question, texts, similar_items)
 
         await _set_stage(assistant_message_id, stage="checking")
+        statute = None
+        reference = parse_qualification_reference(
+            facts.qualification.article if facts.qualification else None
+        )
+        if reference is not None:
+            async with db_session.async_session_factory() as db:
+                statute = await find_article_sanctions(db, reference.article, reference.part)
+            if statute is None:
+                warnings.append(f"Санкция {reference} не найдена в импортированном тексте УК РФ.")
         analysis = assemble_analysis(
             facts,
             prompt=question or "",
@@ -101,6 +112,7 @@ async def run_analysis(
             similar_items=similar_items,
             extra_warnings=warnings,
             document_texts=texts,
+            statute=statute,
         )
 
         async with db_session.async_session_factory() as db:

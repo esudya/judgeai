@@ -209,6 +209,9 @@
 .legal-check { border-top: 1px solid var(--line, #e5e5e5); padding: 20px 0; }
 .legal-check p, .legal-check blockquote { margin: 8px 0; }
 .legal-check blockquote { border-left: 2px solid var(--line, #e5e5e5); padding-left: 12px; overflow-wrap: anywhere; }
+.legal-check--possible_violation { border-left: 3px solid var(--red, #c0392b); padding-left: 16px; }
+.legal-check--possible_violation .eyebrow { color: var(--red, #c0392b); }
+.legal-check-source { font-size: 12px; color: var(--muted, #777); overflow-wrap: anywhere; }
 .cab-dot.failed { background: var(--red); }
 
 .cab-request-note { margin: 0; padding: 8px 24px 0; font-size: 12px; color: var(--muted); }

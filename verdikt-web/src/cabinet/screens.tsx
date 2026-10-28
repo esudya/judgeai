@@ -6,6 +6,7 @@ import { LogoMark } from '../components/Logo';
 import { SentenceScale } from '../components/SentenceScale';
 import { plural } from '../lib/format';
 import { ACCEPT } from './Composer';
+import { legalCheckSourceUrl, legalCheckStatusLabel } from './legalCheckPresentation';
 
 const SUGGESTIONS: [string, string, string, IconName][] = [
   ['Подготовить проект приговора', 'Квалификация, наказание и текст', '#0066ff', 'doc'],
@@ -253,12 +254,18 @@ function Result({ a }: { a: CaseAnalysis }) {
         </div>
 
         }
-        {(a.legalChecks ?? []).map(check => <section key={check.norm} className="legal-check">
-          <div className="eyebrow">{check.norm} · {check.status === 'insufficient_data' ? 'Insufficient data' : 'Candidate · review required'}</div>
-          {check.value && <strong>{check.value.replaceAll('_', ' ')}</strong>}
-          <p>{check.explanation}</p>
-          {check.evidence.map(quote => <blockquote key={quote}>{quote}</blockquote>)}
-        </section>)}
+        {(a.legalChecks ?? []).map(check => {
+          const sourceUrl = legalCheckSourceUrl(check.source);
+          return <section key={check.norm} className={`legal-check legal-check--${check.status}`}>
+            <div className="eyebrow">{check.norm} · {legalCheckStatusLabel(check.status)}</div>
+            {check.value && <strong>{check.value.replaceAll('_', ' ')}</strong>}
+            <p>{check.explanation}</p>
+            {check.evidence.map(quote => <blockquote key={quote}>{quote}</blockquote>)}
+            <p className="legal-check-source">
+              Источник: {sourceUrl ? <a href={sourceUrl} target="_blank" rel="noreferrer">{sourceUrl}</a> : check.source}
+            </p>
+          </section>;
+        })}
         {/* TODO(api): follow-up prompts */}
         <div className="followups">
           <button type="button" className="btn btn-soft btn-xs" disabled title="Not implemented">
