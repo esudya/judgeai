@@ -60,7 +60,7 @@ async def clean_db():
         await conn.execute(
             text(
                 "TRUNCATE chats, knowledge_verdicts, legal_acts, users, auth_login_buckets, "
-                "llm_window_extractions "
+                "llm_window_extractions, precedent_embeddings "
                 "RESTART IDENTITY CASCADE"
             )
         )
@@ -76,6 +76,8 @@ def no_embeddings(monkeypatch):
 
     monkeypatch.setattr("src.services.similarity_search.embed_query", _fail)
     monkeypatch.setattr("src.services.knowledge_service.embed_passages", _fail)
+    monkeypatch.setattr("src.infrastructure.fastembed_embedder.embed_query", _fail)
+    monkeypatch.setattr("src.infrastructure.fastembed_embedder.embed_passages", _fail)
 
 
 @pytest.fixture
