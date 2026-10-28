@@ -1,0 +1,22 @@
+"""Adapter: the plot of the crime (fabula) from the descriptive part of a verdict.
+
+The fabula ends where the court turns to the evidence or to the defendant's position.
+Without such a marker the beginning of the descriptive part is used.
+"""
+
+import re
+
+MAX_FABULA_CHARS = 3000
+_EVIDENCE_START = re.compile(
+    r"(?:В\s+судебном\s+заседании|Вина\s+подсудим|Виновность\s+подсудим|Допрошенн"
+    r"|Исследовав\s+(?:представленные\s+)?доказательства|Подсудим\w+\s+[^.]{0,80}вину"
+    r"|Суд\s+квалифицирует|Действия\s+подсудим)",
+)
+
+
+def extract_fabula(description: str) -> str:
+    text = description.strip()
+    match = _EVIDENCE_START.search(text)
+    if match and match.start() > 0:
+        text = text[: match.start()]
+    return text[:MAX_FABULA_CHARS].strip()

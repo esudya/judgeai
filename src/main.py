@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api import auth, chats, criminal_sanctions, knowledge, legal_library
+from src.api import auth, chats, criminal_sanctions, knowledge, legal_library, precedents
 from src.config import settings
 from src.services.analysis_runner import fail_interrupted_analyses
 
@@ -40,6 +40,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(chats.router, prefix="/api/chats", tags=["chats"])
+app.include_router(precedents.router, prefix="/api/chats", tags=["precedents"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
 app.include_router(legal_library.router, prefix="/api/legal", tags=["legal library"])
 app.include_router(

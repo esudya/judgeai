@@ -217,9 +217,15 @@ class DocxGuardTests(unittest.TestCase):
         import ast
 
         root = Path(__file__).resolve().parents[1]
+        # Inner layers may use pure standard-library modules and the legal_core domain package,
+        # never frameworks, storage, HTTP or the outer src layers.
+        pure = {"dataclasses", "enum", "hashlib", "re", "typing", "legal_core"}
         for layer, allowed in [
-            ("domain", {"dataclasses"}),
-            ("application", {"typing", "src.domain"}),
+            ("domain", pure),
+            (
+                "application",
+                pure | {"collections", "datetime", "logging", "src.domain", "src.application"},
+            ),
         ]:
             for path in (root / "src" / layer).glob("*.py"):
                 for node in ast.walk(ast.parse(path.read_text())):
