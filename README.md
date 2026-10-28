@@ -54,4 +54,9 @@ Structured sanctions of УК РФ (T5) are derived from the imported official te
 
 The criminal-pilot source library, additive migration, trusted import commands, read-only API and local corpus counts are documented in [docs/LEGAL_LIBRARY.md](docs/LEGAL_LIBRARY.md). Technical import is deliberately separate from legal verification: unreviewed sources cannot answer a verified date lookup. No automatic switch of the existing analysis engine to unreviewed legislation is performed.
 
-Локальные учётные записи и план миграции T10: [docs/AUTH.md](docs/AUTH.md) (Draft; PostgreSQL и visual QA обязательны до слияния).
+Реестр зависимостей, лицензий и границ воспроизводимости T19: [docs/compliance/README.md](docs/compliance/README.md). Офлайн-проверка актуальности: `python3 tools/dependency_inventory.py --check`.
+
+
+## Local authentication
+
+Local account provisioning, ownership migration and rollback precautions: [docs/AUTH.md](docs/AUTH.md). All task status and validation evidence: [docs/TASKS.md](docs/TASKS.md).

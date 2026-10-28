@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-10-28",
+  "project_license": "owner-decision-required",
+  "models": [
+    {
+      "name": "alekseevpavel04/multilingual-e5-small-ru-law",
+      "usage": "configured-default-not-runtime-verified",
+      "source_url": "https://huggingface.co/alekseevpavel04/multilingual-e5-small-ru-law",
+      "declared_license": "MIT",
+      "revision": null,
+      "weights_sha256": null,
+      "review_status": "model-card-reviewed-artifact-unresolved",
+      "limitations": "The card describes legal-article retrieval, not criminal precedent matching. No fastembed support or local cache identity is certified by this inventory. T8/T26 own model selection; no replacement is made here."
+    }
+  ],
+  "providers": [
+    {
+      "name": "OpenAI-compatible API adapter",
+      "source_url": "https://gitlab.com/judgeai/judgeai/-/blob/main/src/services/llm_client.py",
+      "usage": "integrated-adapter-runtime-endpoint-not-inspected",
+      "license": "Remote service/model terms depend on the chosen endpoint; not an open-source model claim",
+      "review_status": "provider-terms-and-privacy-approval-required"
+    },
+    {
+      "name": "DeepSeek web session via stateful wrapper",
+      "source_url": "https://github.com/shoshkovs/deepseek-stateful-wrapper",
+      "usage": "integrated-local-development-adapter",
+      "license": "Wrapper notice declares GNU AGPL v3; DeepSeek service and model rights are separate",
+      "evidence_url": "https://github.com/shoshkovs/deepseek-stateful-wrapper/blob/main/NOTICE.md",
+      "upstream_revision": "a19ee7e7987c56eb6334c10aff4db74421130bac",
+      "review_status": "wrapper-release-service-terms-and-distribution-review-required"
+    }
+  ],
+  "datasets": [
+    {
+      "name": "Official criminal pilot legal corpus",
+      "source_url": "https://gitlab.com/judgeai/judgeai/-/blob/main/docs/legal-sources.json",
+      "usage": "imported-local-archives-recorded-in-legal-sources",
+      "license": "No invented SPDX license for official legal documents or source websites",
+      "review_status": "legal-edition-and-reuse-review-required"
+    },
+    {
+      "name": "Private case samples",
+      "source_url": null,
+      "usage": "private-local-only-not-open-data",
+      "license": "Owner permission and personal-data handling approval required; no redistribution approval recorded",
+      "review_status": "private-not-for-publication"
+    },
+    {
+      "name": "sudact.ru candidate precedent source",
+      "source_url": "https://sudact.ru/about/",
+      "usage": "candidate-not-imported-by-this-task",
+      "license": "robots permission does not establish database extraction or redistribution rights",
+      "review_status": "permission-and-source-terms-required"
+    },
+    {
+      "name": "irlspbru/RusLawOD",
+      "source_url": "https://huggingface.co/datasets/irlspbru/RusLawOD",
+      "usage": "candidate-not-imported",
+      "license": "Card metadata: CC-BY-NC-4.0; earlier project notes mention a conflicting NC-SA variant",
+      "review_status": "noncommercial-restriction-and-exact-release-review-required"
+    },
+    {
+      "name": "alekseevpavel04/ru-law-retrieval",
+      "source_url": "https://huggingface.co/datasets/alekseevpavel04/ru-law-retrieval",
+      "usage": "candidate-not-imported-model-training-provenance-only",
+      "license": "Card declares mixed-see-card: legal texts, generated questions and annotations have different conditions",
+      "review_status": "split-specific-rights-review-required"
+    }
+  ],
+  "gaps": [
+    "Python direct dependencies are declared ranges; resolved transitive versions and wheel hashes are not captured.",
+    "Container tags and OS/build dependencies are not pinned to immutable image digests and package snapshots.",
+    "Model revision and weight hashes are not pinned; remote service model identity is not a local open-source weight license.",
+    "npm license fields are lockfile metadata; installed package notices and redistribution obligations still need release review.",
+    "No project LICENSE is selected; owner approval is required before choosing or publishing one.",
+    "No external corpus permissions, private sample redistribution or production-provider privacy approval is granted by this inventory."
+  ]
+}
