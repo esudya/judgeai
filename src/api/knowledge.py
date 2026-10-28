@@ -3,6 +3,7 @@ from sqlalchemy import func, or_, select
 
 from src.api.deps import AdminUser, DbSession
 from src.db.models import KnowledgeChunk, KnowledgeVerdict
+from src.domain.documents import reading_warnings
 from src.schemas.knowledge import (
     KnowledgeListResponse,
     KnowledgeUploadItem,
@@ -10,7 +11,7 @@ from src.schemas.knowledge import (
     KnowledgeVerdictDetail,
     KnowledgeVerdictRead,
 )
-from src.services.document_parser import extract_text_from_file
+from src.services.document_parser import extract_document
 from src.services.file_reader import save_upload_file
 from src.services.knowledge_service import create_knowledge_verdict_from_text
 
@@ -29,31 +30,44 @@ async def upload_verdicts(
 
     items: list[KnowledgeUploadItem] = []
 
-    for file in files:
-        stored_path, _ = await save_upload_file(file)
-        raw_text = await extract_text_from_file(stored_path)
-
-        verdict, duplicate = await create_knowledge_verdict_from_text(
-            db=db,
-            filename=file.filename or "file",
-            raw_text=raw_text,
-            source_type=source_type,
-        )
-
-        items.append(
-            KnowledgeUploadItem(
-                verdict_id=verdict.id,
+    stored_paths = []
+    try:
+        for file in files:
+            stored_path, _ = await save_upload_file(file)
+            stored_paths.append(stored_path)
+            document = await extract_document(stored_path)
+            warnings = reading_warnings(document)
+            if document.status not in {"ok", "partial"} or not document.text.strip():
+                raise HTTPException(
+                    422, "; ".join(warnings) or "No usable document text was found."
+                )
+            verdict, duplicate = await create_knowledge_verdict_from_text(
+                db=db,
                 filename=file.filename or "file",
-                status=verdict.status,
-                duplicate=duplicate,
-                case_number=verdict.case_number,
-                court_name=verdict.court_name,
-                verdict_date=verdict.verdict_date,
-                warnings=[],
+                raw_text=document.text,
+                source_type=source_type,
             )
-        )
-
-    await db.commit()
+            items.append(
+                KnowledgeUploadItem(
+                    verdict_id=verdict.id,
+                    filename=file.filename or "file",
+                    status=verdict.status,
+                    duplicate=duplicate,
+                    case_number=verdict.case_number,
+                    court_name=verdict.court_name,
+                    verdict_date=verdict.verdict_date,
+                    warnings=warnings,
+                    extraction_status=document.status,
+                    extraction_issues=list(document.issues),
+                    unread_pages=list(document.unread_pages),
+                )
+            )
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        for path in stored_paths:
+            path.unlink(missing_ok=True)
+        raise
 
     return KnowledgeUploadResponse(uploaded=len(items), items=items)
 

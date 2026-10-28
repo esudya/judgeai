@@ -109,6 +109,7 @@ async def test_extraction_status_is_reported(client, monkeypatch):
     chat_id = await _new_chat(client)
     r = await client.post(
         f"/api/chats/{chat_id}/messages",
+        data={"content": "Explain the extraction warning"},
         files=[("files", ("Протокол.pdf", pdf(), "application/pdf"))],
     )
     msgs = (await client.get(f"/api/chats/{chat_id}/messages")).json()

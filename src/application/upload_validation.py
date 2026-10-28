@@ -38,7 +38,7 @@ class ValidateUpload:
             if self.pdf_inspector is None or self.pdf_limits is None:
                 raise reject_pdf("pdf_unavailable")
             inspector, limits = self.pdf_inspector, self.pdf_limits
-        elif suffix.lower() == ".docx":
+        elif suffix.lower() in {".docx", ".dotx"}:
             inspector, limits = self.inspector, self.limits
         else:
             return None

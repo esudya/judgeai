@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class KnowledgeVerdictRead(BaseModel):
@@ -32,6 +32,9 @@ class KnowledgeUploadItem(BaseModel):
     court_name: str | None
     verdict_date: date | None
     warnings: list[str]
+    extraction_status: str = "ok"
+    extraction_issues: list[str] = Field(default_factory=list)
+    unread_pages: list[int] = Field(default_factory=list)
 
 
 class KnowledgeUploadResponse(BaseModel):

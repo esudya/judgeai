@@ -34,10 +34,10 @@ api-tests:
     DB_NULL_POOL: 'true'
   script:
     - pip install '.[dev]' ./packages/legal_core
-    - pytest tests tests_uploads tests_uploads_http tests_pdf --cov=src
+    - pytest tests tests_uploads tests_uploads_http tests_pdf tests_reading --cov=src
     - cd packages/legal_core && pytest && cd ../..
-    - ruff check src tests packages/legal_core tests_browser tests_uploads tests_uploads_http tests_pdf
-    - ruff format --check src tests packages/legal_core tests_browser tests_uploads tests_uploads_http tests_pdf
+    - ruff check src tests packages/legal_core tests_browser tests_uploads tests_uploads_http tests_pdf tests_reading
+    - ruff format --check src tests packages/legal_core tests_browser tests_uploads tests_uploads_http tests_pdf tests_reading
 
 browser-auth:
   stage: test

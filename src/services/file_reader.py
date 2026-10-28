@@ -54,7 +54,7 @@ async def save_upload_file(file: UploadFile) -> tuple[Path, int]:
                         detail=f"Файл «{file.filename}» больше {settings.UPLOAD_MAX_MB} МБ",
                     )
                 out.write(chunk)
-        if suffix in {".docx", ".pdf"}:
+        if suffix in {".docx", ".dotx", ".pdf"}:
             try:
                 await asyncio.to_thread(_validate_stored_document, stored_path)
             except UploadRejected as exc:

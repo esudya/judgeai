@@ -17,6 +17,7 @@ from src.config import settings
 from src.db import session as db_session
 from src.db.auth import User
 from src.db.models import Chat, Message
+from src.domain.documents import UnreadableInput, reading_warnings
 from src.services.analysis_access import is_pending_reply
 from src.services.auth import UserContext
 from src.services.case_analyzer import assemble_analysis, extract_facts
@@ -106,6 +107,7 @@ async def run_analysis(
                 pages += doc.page_count or 0
                 if doc.status in ("partial", "empty", "error"):
                     warnings.append(f"«{att.filename}»: текст распознан {_status_ru(doc.status)}.")
+                warnings.extend(f"{att.filename}: {warning}" for warning in reading_warnings(doc))
                 if save_to_knowledge_base and doc.text.strip():
                     await create_knowledge_verdict_from_text(
                         db=db, filename=att.filename, raw_text=doc.text, source_type="chat"
@@ -114,6 +116,11 @@ async def run_analysis(
             chat_id = user_message.chat_id
             documents = len(user_message.attachments)
             await db.commit()
+
+        if not (question or "").strip() and not any(text.strip() for text in texts):
+            raise UnreadableInput(
+                "No readable text was found. Provide a readable document or a question."
+            )
 
         await _set_stage(assistant_message_id, stage="searching")
         similar_items: list[dict] = []
@@ -171,7 +178,11 @@ async def run_analysis(
     except Exception as exc:
         logger.exception("analysis failed for message %s", assistant_message_id)
         # LLMError messages are written for users; anything else is an internal error.
-        error = str(exc) if isinstance(exc, LLMError) else "Внутренняя ошибка анализа"
+        error = (
+            str(exc)
+            if isinstance(exc, (LLMError, UnreadableInput))
+            else "Внутренняя ошибка анализа"
+        )
         async with db_session.async_session_factory() as db:
             await db.execute(
                 update(Message)
