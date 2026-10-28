@@ -18,10 +18,10 @@ from src.application.similar_precedents import StoredCard, VerdictSource
 from src.db.models import KnowledgeVerdict
 from src.db.precedents import PrecedentCardField, PrecedentCardRow, PrecedentEmbedding
 from src.domain.extraction import input_hash
+from src.domain.practice import PRIVATE_SOURCE_TYPES
 
 _WORD = re.compile(r"[а-яё]{4,}", re.IGNORECASE)
 MAX_QUERY_WORDS = 40
-PRIVATE_SOURCE_TYPES = ("chat",)
 
 
 def _term_json(term: PunishmentTerm | None) -> dict | None:
