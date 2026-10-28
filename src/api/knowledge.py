@@ -85,7 +85,7 @@ async def upload_verdicts(
             warnings = reading_warnings(document)
             if document.status not in {"ok", "partial"} or not document.text.strip():
                 raise HTTPException(
-                    422, "; ".join(warnings) or "No usable document text was found."
+                    422, "; ".join(warnings) or "В документе не найден пригодный текст."
                 )
             verdict, duplicate = await create_knowledge_verdict_from_text(
                 db=db,
@@ -125,13 +125,14 @@ async def upload_verdicts(
 @router.get("/verdicts", response_model=KnowledgeListResponse)
 async def list_verdicts(
     db: DbSession,
-    user: AdminUser,
+    user: CurrentUser,
     page: int = 1,
     size: int = 20,
     q: str | None = None,
 ):
-    base_stmt = select(KnowledgeVerdict)
-    count_stmt = select(func.count(KnowledgeVerdict.id))
+    shared = KnowledgeVerdict.source_type.not_in(PRIVATE_SOURCE_TYPES)
+    base_stmt = select(KnowledgeVerdict).where(shared)
+    count_stmt = select(func.count(KnowledgeVerdict.id)).where(shared)
 
     if q:
         filter_expr = or_(
@@ -161,10 +162,10 @@ async def list_verdicts(
 
 
 @router.get("/verdicts/{verdict_id}", response_model=KnowledgeVerdictDetail)
-async def get_verdict(verdict_id: int, db: DbSession, user: AdminUser):
+async def get_verdict(verdict_id: int, db: DbSession, user: CurrentUser):
     verdict = await db.get(KnowledgeVerdict, verdict_id)
 
-    if not verdict:
+    if not verdict or verdict.source_type in PRIVATE_SOURCE_TYPES:
         raise HTTPException(status_code=404, detail="Приговор не найден")
 
     chunks_count = await db.scalar(
