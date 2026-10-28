@@ -172,6 +172,22 @@ class BrowserAuthAcceptance(unittest.TestCase):
                     path=str(ROOT / "acceptance-screenshots" / f"{label}-workspace.png"),
                     full_page=True,
                 )
+                page.locator('input[type="file"]').last.set_input_files(
+                    {"name": "synthetic-empty.txt", "mimeType": "text/plain", "buffer": b" "}
+                )
+                expect(
+                    page.get_by_text("Uploaded · waiting to be read", exact=True)
+                ).to_be_visible()
+                page.get_by_role("button", name="Отправить", exact=True).click()
+                expect(page.get_by_text("No readable text", exact=True)).to_be_visible(
+                    timeout=15000
+                )
+                expect(page.get_by_role("alert")).to_contain_text("No readable text")
+                self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth"), width)
+                page.screenshot(
+                    path=str(ROOT / "acceptance-screenshots" / f"{label}-reading-failure.png"),
+                    full_page=True,
+                )
                 page.reload()
                 expect(page.get_by_role("button", name="Sign out", exact=True)).to_be_visible()
                 session = context.request.get(URL + "/api/auth/me").json()

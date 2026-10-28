@@ -151,7 +151,8 @@ class DocxGuardTests(unittest.TestCase):
 
     def test_macro_content_and_external_main_relationship_are_rejected(self):
         macro = CONTENT_TYPES.replace(
-            b"wordprocessingml.document.main+xml", b"wordprocessingml.template.main+xml"
+            b"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+            b"application/vnd.ms-word.document.macroEnabled.main+xml",
         )
         with self.assertRaises(UploadRejected):
             self.validate(archive({"[Content_Types].xml": macro}))
