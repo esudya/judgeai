@@ -54,6 +54,47 @@ export interface SimilarVerdict {
   score: number;
 }
 
+/** A comparable precedent from the practice base (wire field names; no fabula). */
+export interface PrecedentMatch {
+  card_id: number;
+  court_name: string | null;
+  decision_date: string | null;
+  uid: string | null;
+  source_url: string | null;
+  qualifications: string[];
+  punishment_months: number | null;
+  conditional: boolean;
+  recidivism: string | null;
+  /** 0–1 */
+  score: number;
+  breakdown: Record<string, { score: number; weight: number }>;
+  filters: { name: string; state: 'passed' | 'failed' | 'uncertain'; reason: string; action: string }[];
+  channels: string[];
+}
+
+/** Terms of the comparable precedents and the draft's place among them (T28). */
+export interface PracticeComparison {
+  total: number;
+  with_term: number;
+  enough_data: boolean;
+  min_months: number | null;
+  p25_months: number | null;
+  median_months: number | null;
+  p75_months: number | null;
+  max_months: number | null;
+  conditional_share: number | null;
+  art64_share: number | null;
+  art73_share: number | null;
+  draft_months: number | null;
+  draft_percentile: number | null;
+  position: 'below' | 'within' | 'above' | null;
+  candidates: number;
+  excluded: number;
+  vector_used: boolean;
+}
+
+export type PrecedentSource = 'cards' | 'text' | 'none' | null;
+
 export interface LegalCheck {
   norm: string;
   status: 'ok' | 'possible_violation' | 'insufficient_data';
@@ -78,6 +119,9 @@ export interface CaseAnalysis {
   personality: string;
   variants: PunishmentVariant[];
   similar: SimilarVerdict[];
+  precedentSource?: PrecedentSource;
+  precedents?: PrecedentMatch[];
+  practice?: PracticeComparison | null;
 }
 
 export interface AnalysisStep {

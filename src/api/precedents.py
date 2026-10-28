@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.api.deps import CurrentUser, DbSession
-from src.application.precedent_cards import build_card
+from src.application.precedent_cards import query_card
 from src.application.similar_precedents import EmbeddingPort, FindSimilarPrecedents
 from src.db.models import Chat, Message
 from src.infrastructure.fastembed_embedder import FastembedEmbedder
@@ -61,9 +61,7 @@ async def similar_precedents(
             vector_used=False,
             note="В деле нет загруженных документов с текстом.",
         )
-    reader = RegexVerdictReader()
-    cards = [build_card(reader, text).card for text in texts]
-    query = next((card for card in cards if card.episodes), cards[0])
+    query = query_card(RegexVerdictReader(), texts)
     found = await FindSimilarPrecedents(SqlPrecedentStore(db), embedder).execute(query, limit)
     return PrecedentSearchRead(
         query=QueryCardRead(

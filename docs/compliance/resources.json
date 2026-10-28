@@ -4,14 +4,26 @@
   "project_license": "owner-decision-required",
   "models": [
     {
-      "name": "alekseevpavel04/multilingual-e5-small-ru-law",
+      "name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
       "usage": "configured-default-not-runtime-verified",
+      "source_url": "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "runtime_artifact_url": "https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q",
+      "declared_license": "Apache-2.0",
+      "license_evidence": "fastembed 0.9.1 TextEmbedding.list_supported_models(): license apache-2.0, dim 384, size 0.22 GB, hf source Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q",
+      "revision": null,
+      "weights_sha256": null,
+      "review_status": "library-registry-only-model-card-not-reviewed",
+      "limitations": "General multilingual paraphrase model, not trained on legal texts; ranking quality for criminal precedents is unproven until the T29 benchmark. Hugging Face was unreachable from the build environment: the model card, revision and weights hash are not verified. Dimension 384 matches the existing vector(384) columns, so no schema change."
+    },
+    {
+      "name": "alekseevpavel04/multilingual-e5-small-ru-law",
+      "usage": "previous-default-unsupported-by-fastembed",
       "source_url": "https://huggingface.co/alekseevpavel04/multilingual-e5-small-ru-law",
       "declared_license": "MIT",
       "revision": null,
       "weights_sha256": null,
       "review_status": "model-card-reviewed-artifact-unresolved",
-      "limitations": "The card describes legal-article retrieval, not criminal precedent matching. No fastembed support or local cache identity is certified by this inventory. T8/T26 own model selection; no replacement is made here."
+      "limitations": "The card describes legal-article retrieval, not criminal precedent matching. No fastembed support or local cache identity is certified by this inventory. Replaced as the default on 2026-10-28 (T8/T26): fastembed 0.9.1 does not list it, so it never produced vectors."
     }
   ],
   "providers": [

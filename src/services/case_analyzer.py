@@ -6,18 +6,21 @@ The LLM only extracts facts (LlmCaseFacts). Everything that is arithmetic over t
 
 import json
 import logging
+import math
 
 from legal_core.entities import (
     ArticleReference,
     CountSentence,
     ImposedPunishment,
     ImposedSentence,
+    MeasureUnit,
     SanctionCeiling,
 )
 from legal_core.rules.imposed_term import check_imposed_imprisonment, check_imposed_punishment
 from legal_core.rules.sanction_ceiling import sanction_ceiling_for_part
 from pydantic import ValidationError
 
+from src.application.practice_report import PracticeReport
 from src.schemas.analysis import (
     AnalysisStats,
     CaseAnalysis,
@@ -25,13 +28,20 @@ from src.schemas.analysis import (
     ImposedSentenceRead,
     LegalCheck,
     LlmCaseFacts,
+    PracticeComparisonRead,
+    PrecedentFilterRead,
+    PrecedentMatchRead,
     SentenceScale,
     SimilarVerdictRef,
 )
 from src.services.criminal_sanction_lookup import StatuteSanctionReading
 from src.services.legal_checks import build_legal_checks
 from src.services.llm_client import LLMClient, LLMError
-from src.services.sanction_summary import describe_main_alternatives, describe_term
+from src.services.sanction_summary import (
+    describe_main_alternatives,
+    describe_term,
+    format_amount,
+)
 from src.services.sentencing import art62_part1_limit
 
 logger = logging.getLogger(__name__)
@@ -94,6 +104,111 @@ def _similar_refs(similar_items: list[dict]) -> list[SimilarVerdictRef]:
     return refs
 
 
+def _precedent_punishment(months: int | None, conditional: bool) -> str:
+    if months is None:
+        return "Наказание не распознано"
+    term = f"{format_amount(months, MeasureUnit.MONTHS)} лишения свободы"
+    return f"{term}, условно" if conditional else term
+
+
+def precedent_prompt_items(report: PracticeReport) -> list[dict]:
+    """The comparable precedents in the shape the LLM prompt lists them."""
+    return [
+        {
+            "verdict_id": item.stored.knowledge_verdict_id,
+            "case_number": item.stored.uid,
+            "court_name": item.stored.court_name,
+            "verdict_date": item.stored.decision_date.isoformat()
+            if item.stored.decision_date
+            else None,
+            "excerpt": "; ".join(
+                [
+                    ", ".join(str(e.qualification) for e in item.stored.card.episodes),
+                    _precedent_punishment(
+                        item.stored.card.imprisonment_months, item.stored.card.conditional
+                    ),
+                ]
+            ),
+            "score": item.score,
+        }
+        for item in report.shown
+    ]
+
+
+def _precedent_reads(report: PracticeReport) -> list[PrecedentMatchRead]:
+    return [
+        PrecedentMatchRead(
+            card_id=item.stored.id,
+            court_name=item.stored.court_name,
+            decision_date=item.stored.decision_date.isoformat()
+            if item.stored.decision_date
+            else None,
+            uid=item.stored.uid,
+            source_url=item.stored.source_url,
+            qualifications=[str(e.qualification) for e in item.stored.card.episodes],
+            punishment_months=item.stored.card.imprisonment_months,
+            conditional=item.stored.card.conditional,
+            recidivism=item.stored.card.recidivism.value if item.stored.card.recidivism else None,
+            score=item.score,
+            breakdown=item.breakdown,
+            filters=[
+                PrecedentFilterRead(
+                    name=f.name, state=f.state.value, reason=f.reason, action=f.action.value
+                )
+                for f in item.filters
+            ],
+            channels=list(item.channels),
+        )
+        for item in report.shown
+    ]
+
+
+def _practice_read(report: PracticeReport) -> PracticeComparisonRead:
+    c = report.comparison
+    return PracticeComparisonRead(
+        total=c.total,
+        with_term=c.with_term,
+        enough_data=c.enough_data,
+        min_months=c.min_months,
+        p25_months=c.p25_months,
+        median_months=c.median_months,
+        p75_months=c.p75_months,
+        max_months=c.max_months,
+        conditional_share=c.conditional_share,
+        art64_share=c.art64_share,
+        art73_share=c.art73_share,
+        draft_months=c.draft_months,
+        draft_percentile=c.draft_percentile,
+        position=c.position.value if c.position else None,
+        candidates=report.candidates,
+        excluded=report.excluded,
+        vector_used=report.vector_used,
+    )
+
+
+def _precedent_refs(report: PracticeReport) -> list[SimilarVerdictRef]:
+    return [
+        SimilarVerdictRef(
+            verdict_id=item.stored.knowledge_verdict_id,
+            punishment=_precedent_punishment(
+                item.stored.card.imprisonment_months, item.stored.card.conditional
+            ),
+            court=" · ".join(
+                x
+                for x in [
+                    item.stored.court_name,
+                    item.stored.decision_date.isoformat() if item.stored.decision_date else None,
+                ]
+                if x
+            )
+            or "Суд не указан",
+            match=", ".join(str(e.qualification) for e in item.stored.card.episodes)[:160],
+            score=round(item.score * 100),
+        )
+        for item in report.shown
+    ]
+
+
 def assemble_analysis(
     facts: LlmCaseFacts,
     *,
@@ -108,9 +223,12 @@ def assemble_analysis(
     sentence: ImposedSentence | None = None,
     count_statutes: dict[ArticleReference, StatuteSanctionReading] | None = None,
     model_texts: list[str] | None = None,
+    practice: PracticeReport | None = None,
+    precedent_source: str | None = None,
 ) -> CaseAnalysis:
     """sentence/count_statutes come from the operative part read by regex; when present, the
-    imposed punishment is checked per count instead of the single model-cited term."""
+    imposed punishment is checked per count instead of the single model-cited term.
+    practice holds the precedent cards found for the draft and the T28 comparison."""
     warnings = list(extra_warnings)
     per_count = sentence is not None and bool(sentence.counts)
     ceiling = _statutory_ceiling(statute)
@@ -173,6 +291,14 @@ def assemble_analysis(
             recommended_months=rec,
             within_sanction=(rec <= cap) if rec is not None else None,
         )
+        comparison = practice.comparison if practice is not None else None
+        if comparison is not None and comparison.enough_data:
+            # Half up, not Python's half-to-even: 13.5 and 28.5 must both move outward alike.
+            scale.practice_months = (
+                math.floor(comparison.p25_months + 0.5),
+                math.floor(comparison.p75_months + 0.5),
+            )
+            scale.avg_similar_months = math.floor(comparison.median_months + 0.5)
         if ceiling is not None and ceiling.max_imprisonment_months is not None:
             warnings.append(_statute_warning(statute))
         else:
@@ -200,7 +326,12 @@ def assemble_analysis(
         or "Не установлены (ст. 63 УК РФ).",
         personality=facts.personality,
         variants=facts.variants,
-        similar=_similar_refs(similar_items),
+        similar=_precedent_refs(practice)
+        if practice and practice.shown
+        else _similar_refs(similar_items),
+        precedent_source=precedent_source,
+        precedents=_precedent_reads(practice) if practice else [],
+        practice=_practice_read(practice) if practice else None,
         warnings=warnings,
     )
 

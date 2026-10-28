@@ -1,10 +1,16 @@
 import asyncio
 import importlib
+import time
 from typing import Any
 
 from src.config import settings
 
+# fastembed retries a failed download for about 40 s; without a pause every call (each file of
+# an upload, each analysis) would wait that long again while the model source is unreachable.
+LOAD_RETRY_SECONDS = 600.0
+
 _model: Any = None
+_failed_until = 0.0
 _lock = asyncio.Lock()
 
 
@@ -17,11 +23,13 @@ def _requires_prefix() -> bool:
 
 
 async def get_embedding_model() -> Any:
-    global _model
+    global _model, _failed_until
 
     if _model is None:
         async with _lock:
             if _model is None:
+                if time.monotonic() < _failed_until:
+                    raise RuntimeError("Embedding model unavailable after a failed load")
                 try:
                     fastembed = importlib.import_module("fastembed")
                     text_embedding_cls = fastembed.TextEmbedding
@@ -34,6 +42,9 @@ async def get_embedding_model() -> Any:
                     raise RuntimeError(
                         "Пакет fastembed не установлен. Выполни: uv pip install fastembed"
                     ) from exc
+                except Exception:
+                    _failed_until = time.monotonic() + LOAD_RETRY_SECONDS
+                    raise
 
     return _model
 

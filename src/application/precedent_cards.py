@@ -127,3 +127,11 @@ def build_card(reader: VerdictReader, text: str) -> CardExtraction:
         found("fabula", reading.fabula or None, reading.fabula[:300]),
     )
     return CardExtraction(card, fields, source)
+
+
+def query_card(reader: VerdictReader, texts: list[str]) -> PrecedentCard | None:
+    """Card of a draft: the first document whose qualification was read, else the first one."""
+    cards = [build_card(reader, text).card for text in texts if text.strip()]
+    if not cards:
+        return None
+    return next((card for card in cards if card.episodes), cards[0])

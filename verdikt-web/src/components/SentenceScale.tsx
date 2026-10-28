@@ -19,7 +19,7 @@ export function sanctionLabel(maxMonths: number): string {
 
 /**
  * "Сверка с законом" card: sanction track, mitigation limit, practice band,
- * average of similar verdicts and the recommendation on one 0..max axis.
+ * median of similar verdicts and the recommendation on one 0..max axis.
  */
 export function SentenceScale({ scale, animated = false, legend = 'plain' }: Props) {
   const max = scale.sanctionMaxMonths;
@@ -57,7 +57,7 @@ export function SentenceScale({ scale, animated = false, legend = 'plain' }: Pro
           className={`scale-avg-label ${a('slide-now') ?? ''}`}
           style={{ left: `${avg}%`, ...(animated ? slideFrom(`translateX(calc(-50% - ${avg}cqw))`) : {}) }}
         >
-          Среднее по схожим · {formatMonths(scale.avgSimilarMonths)}
+          Медиана по схожим · {formatMonths(scale.avgSimilarMonths)}
         </div>
         <div className={`scale-avg-dot ${a('slide-now') ?? ''}`} style={{ left: `${avg}%`, ...(animated ? slideFrom(`translateX(-${avg}cqw)`) : {}) }} /></>}
         {scale.recommendedMonths !== null && <><div className={`scale-rec-dot ${a('pop-now') ?? ''}`} style={{ left: `${rec}%` }} />
