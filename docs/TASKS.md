@@ -297,3 +297,9 @@
 - [!] !27: при первичной проверке был Draft с незавершённой интеграцией judgeai/ai-review (образ/Job token permissions/CI secrets); в этой итерации доступы/секреты не изменялись. Во время проверки журнала GitLab уже показал параллельное слияние !27 в f885779dfeff32fbb5c09383a3f70fb65b3993ae. Конфигурация не откатывается и чужая работа не переписывается. Новый job ai-review в CI2998696312 имеет allow_failure=true и падает на pull access denied для registry.gitlab.com/jobbytime.com-group/jobbytime-ai-review:v1; это не успешное ревью. Обязательные api-tests/browser-auth/inventory оцениваются отдельно, без ослабления их условий.
 
 - Итог этой итерации: самостоятельно влиты2 из4 проверенных открытых MR (!24,!26); !25 оставлен Draft. !27 впоследствии влит параллельно, незавершённая настройка AI-review зафиксирована выше. Публикуется отдельная запись журнала, без изменения продукта.
+
+### Проверка AI-review на тестовом MR — 28.10.2026
+
+**Цель/DoD:** убедиться, что job ai-review в MR-пайплайне запускается и публикует результат ревью. Изменение — только docstring у `/health` (не только docs, иначе skip_paths пропустит MR). Без merge/deploy: слияние в main запускает production deploy.
+- [x] До проверки: в CI2998707309 (!28) образ registry.gitlab.com/judgeai/ai-review:v1 уже скачивается, job падает с exit 2 на `KeyError: 'OPENAI_API_KEY'` — CI-переменная не задана.
+- [~] Draft MR из ветки chore/ai-review-smoke открыт; результат job ai-review записать здесь.
