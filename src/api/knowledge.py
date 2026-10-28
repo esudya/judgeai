@@ -73,6 +73,8 @@ async def upload_verdicts(
 ):
     if not files:
         raise HTTPException(status_code=422, detail="Не переданы файлы")
+    if source_type in PRIVATE_SOURCE_TYPES:  # set only by the analysis of a user's own case
+        raise HTTPException(status_code=422, detail="Недопустимый источник документа")
 
     items: list[KnowledgeUploadItem] = []
 
