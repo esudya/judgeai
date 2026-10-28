@@ -23,6 +23,16 @@ class KnowledgeVerdictDetail(KnowledgeVerdictRead):
     chunks_count: int
 
 
+class PrecedentIndexRead(BaseModel):
+    """What the regex reader recognised in an uploaded verdict (its precedent card)."""
+
+    card_id: int
+    qualifications: list[str]
+    punishment_months: int | None
+    conditional: bool
+    recidivism: str | None
+
+
 class KnowledgeUploadItem(BaseModel):
     verdict_id: int
     filename: str
@@ -35,6 +45,8 @@ class KnowledgeUploadItem(BaseModel):
     extraction_status: str = "ok"
     extraction_issues: list[str] = Field(default_factory=list)
     unread_pages: list[int] = Field(default_factory=list)
+    # None: no card (a private case document, or the same text is already a card elsewhere).
+    precedent: PrecedentIndexRead | None = None
 
 
 class KnowledgeUploadResponse(BaseModel):

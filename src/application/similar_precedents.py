@@ -121,8 +121,12 @@ class IndexPrecedents:
             embedding_text = build_embedding_text(extraction.card.fabula)
             await self.store.save_card(source, extraction, embedding_text)
             cards += 1
+        return CardsReport(cards, duplicates)
+
+    async def embed_pending(self, batch: int = 32) -> VectorsReport:
         model = self.embedder.model_name
         pending = await self.store.texts_without_embedding(model)
+        vectors = 0
         try:
             for start in range(0, len(pending), batch):
                 chunk = pending[start : start + batch]
@@ -133,8 +137,13 @@ class IndexPrecedents:
                 vectors += len(chunk)
         except Exception as exc:  # the cards stay usable through the other two channels
             logger.warning("precedent embeddings failed", exc_info=True)
-            return IndexReport(cards, duplicates, vectors, f"{type(exc).__name__}: {exc}")
-        return IndexReport(cards, duplicates, vectors)
+            return VectorsReport(vectors, f"{type(exc).__name__}: {exc}")
+        return VectorsReport(vectors)
+
+    async def execute(self, extractor_version: str, batch: int = 32) -> IndexReport:
+        cards = await self.build_cards(extractor_version)
+        vectors = await self.embed_pending(batch)
+        return IndexReport(cards.cards, cards.duplicates, vectors.vectors, vectors.error)
 
 
 @dataclass(frozen=True)

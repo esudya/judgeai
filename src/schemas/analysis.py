@@ -47,12 +47,61 @@ class SimilarVerdictRef(ApiModel):
     score: int = Field(ge=0, le=100)
 
 
+class PrecedentFilterRead(ApiModel):
+    name: str
+    state: str
+    reason: str
+    action: str
+
+
+class PrecedentMatchRead(ApiModel):
+    """A comparable precedent from the practice base; its fabula is never returned."""
+
+    card_id: int
+    court_name: str | None
+    decision_date: str | None
+    uid: str | None
+    source_url: str | None
+    qualifications: list[str]
+    punishment_months: int | None
+    conditional: bool
+    recidivism: str | None
+    score: float = Field(ge=0, le=1)
+    breakdown: dict[str, dict[str, float]]
+    filters: list[PrecedentFilterRead]
+    channels: list[str]
+
+
+class PracticeComparisonRead(ApiModel):
+    """Terms imposed in the comparable precedents and the draft's place among them (T28)."""
+
+    total: int
+    with_term: int
+    enough_data: bool
+    min_months: int | None
+    p25_months: float | None
+    median_months: float | None
+    p75_months: float | None
+    max_months: int | None
+    conditional_share: float | None
+    art64_share: float | None
+    art73_share: float | None
+    draft_months: int | None
+    draft_percentile: float | None
+    position: Literal["below", "within", "above"] | None
+    candidates: int
+    excluded: int
+    vector_used: bool
+
+
 class SentenceScale(ApiModel):
     """All terms in months; the UI draws them on a 0..sanction_max_months axis."""
 
     sanction_max_months: int = Field(gt=0)
     limit_months: int | None = None
     limit_norm: str | None = None
+    # Interquartile range and median of comparable precedents (T28); the field keeps its
+    # historical name, the value is the median.
     practice_months: tuple[int, int] | None = None
     avg_similar_months: int | None = None
     recommended_months: int | None = Field(default=None, ge=0)
@@ -99,6 +148,11 @@ class CaseAnalysis(ApiModel):
     personality: str | None = None
     variants: list[PunishmentVariant] = []
     similar: list[SimilarVerdictRef] = []
+    # "cards": precedent cards (T24–T27); "text": free-text fallback over the knowledge base;
+    # "none": nothing found; None: the knowledge base was not searched.
+    precedent_source: Literal["cards", "text", "none"] | None = None
+    precedents: list[PrecedentMatchRead] = []
+    practice: PracticeComparisonRead | None = None
     # Human-readable caveats the UI must show (e.g. unverified sanction, partial OCR).
     warnings: list[str] = []
 

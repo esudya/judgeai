@@ -13,14 +13,24 @@ from pathlib import Path
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
+from src.application.practice_report import compare_draft_with_practice
+from src.application.precedent_cards import query_card
 from src.config import settings
 from src.db import session as db_session
 from src.db.auth import User
 from src.db.models import Chat, Message
 from src.domain.documents import UnreadableInput, reading_warnings
+from src.infrastructure.fastembed_embedder import FastembedEmbedder
+from src.infrastructure.precedent_store import SqlPrecedentStore
+from src.infrastructure.verdict_reader import RegexVerdictReader
 from src.services.analysis_access import is_pending_reply
 from src.services.auth import UserContext
-from src.services.case_analyzer import DOCUMENT_CHARS_LIMIT, assemble_analysis, extract_facts
+from src.services.case_analyzer import (
+    DOCUMENT_CHARS_LIMIT,
+    assemble_analysis,
+    extract_facts,
+    precedent_prompt_items,
+)
 from src.services.criminal_sanction_lookup import find_article_sanctions
 from src.services.document_parser import extract_document
 from src.services.knowledge_service import create_knowledge_verdict_from_text
@@ -41,6 +51,22 @@ async def _set_stage(message_id: int, *, status: str = "running", stage: str | N
             update(Message).where(Message.id == message_id).values(status=status, stage=stage)
         )
         await db.commit()
+
+
+def get_precedent_embedder() -> FastembedEmbedder:
+    return FastembedEmbedder()
+
+
+async def _search_practice(db, question: str, texts: list[str]):
+    """Precedent cards first (T24–T28); the free-text search only when there are no cards
+    yet or the draft gave no text to read a card from. Returns (prompt items, report, source)."""
+    store = SqlPrecedentStore(db)
+    query = query_card(RegexVerdictReader(), texts)
+    if query is not None and await store.has_cards():
+        report = await compare_draft_with_practice(store, get_precedent_embedder(), query)
+        return precedent_prompt_items(report), report, "cards"
+    items = await find_similar_verdicts(db=db, query_text=question, document_texts=texts)
+    return items, None, "text" if items else "none"
 
 
 async def run_analysis(
@@ -126,10 +152,11 @@ async def run_analysis(
 
         await _set_stage(assistant_message_id, stage="searching")
         similar_items: list[dict] = []
+        practice = precedent_source = None
         if use_knowledge_base:
             async with db_session.async_session_factory() as db:
-                similar_items = await find_similar_verdicts(
-                    db=db, query_text=question or "", document_texts=texts
+                similar_items, practice, precedent_source = await _search_practice(
+                    db, question or "", texts
                 )
 
         await _set_stage(assistant_message_id, stage="qualifying")
@@ -173,6 +200,8 @@ async def run_analysis(
             sentence=sentence,
             count_statutes=count_statutes,
             model_texts=structure.model_texts,
+            practice=practice,
+            precedent_source=precedent_source,
         )
 
         async with db_session.async_session_factory() as db:
