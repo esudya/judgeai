@@ -191,3 +191,25 @@
 - [ ] Экспертные ограничения T3/T23 (29 февраля, временная применимость), полный privacy/нагрузка T17/T18 и production-переключение остаются самостоятельными этапами; техническая приёмка их не закрывает.
 
 - 28.10.2026: техническая интеграция завершена через [MR !22](https://gitlab.com/judgeai/judgeai/-/merge_requests/22), merge471e8ae582546f1a791606518c41cead9197eac9. Приняты авторизация, ограниченная приёмка DOCX и изолированные candidate-факты судимости. T3/T17/T19/T23 не объявлены полностью завершёнными; только T10 и технический DoD T17.1 закрыты. Финальный журнал меняет документацию, не продукт.
+
+
+### T17.2 — ограниченная приёмка PDF, начато 28.10.2026
+
+**Цель:** перед извлечением текста отклонять подменённые/повреждённые/зашифрованные PDF и превышение ресурсных бюджетов; удалять отвергнутые временные файлы. Общий save_upload_file используется обоими существующими маршрутами, без изменения парсера/извлечения T24–T27.
+
+**Решение/границы:** domain — чистые PdfLimits/PdfInspection и ошибки; application — существующий ValidateUpload расширяется PDF-портом с сохранением позиции потока; infrastructure — PDFMiner из уже имеющегося pdfplumber, строгий ограниченный разбор без восстановления битых xref; отдельный worker со stdin read-only файла, минимальным environment, без чтения config/.env, фиксированным JSON-ответом. Запуск через sys.executable -I и доверенный worker, без shell. Ресурсная изоляция не объявляется OS security sandbox. Новых зависимостей/БД/UI/юридических правил нет.
+
+**Начальные лимиты:** existing UPLOAD_MAX_MB (50 МиБ по умолчанию), страницы200, объекты20000, inline nodes200000/depth64, распакованный поток8 МиБ/сумма32 МиБ, коэффициент200, цепочка фильтров4; память512 МиБ/CPU3с/wall6с на проверку. Максимум два PDF worker одновременно на процесс API; перегрузка — временный отказ, а не безграничная очередь. Невозможность установить обязательные ресурсы — отказ503, а не пропуск проверки. Геометрия страниц/изображений ограничивается до потенциального извлечения/отрисовки.
+
+**Риски:** строгий ограниченный subset может отклонять необычные, восстанавливаемые или очень большие документы. Все encrypted PDF, включая empty password, отклоняются; пароли не запрашиваются. Проверка не выполняет OCR/текстовое извлечение, не гарантирует отсутствие произвольного вредоносного содержимого и не является полным лимитом последующего text extraction. Linux resource limits проверяются в CI; macOS проверяется отдельно при доступности, platform differences не скрывать. Общая очередь/межпроцессные квоты и полный timeout extraction остаются в T17/T18.
+
+**DoD/шаги:**
+- [x] Прочитаны тела текущего save_upload_file, ValidateUpload, document_parser и PDFDocument/PDFStream/PDFPage; сохранены общий путь загрузок и T24–T27. Ветка от локального снимка, совпадающего с принятой main5ce360e3; выделенный worktree уже существует.
+- [x] RED подтверждён: подмена PDF до подключения guard возвращала200 вместо415; после реализации HTTP415+cleanup. Синтетические PDF создаются независимым minimal-xref builder; encrypted fixtures с empty/non-empty паролем сгенерированы один раз вне проекта, pypdf/reportlab не добавлены в зависимости.
+- [x] Реализованы policy/application-port, bounded inspector и worker; общий ValidateUpload/save_upload_file/UploadRejected/cleanup переиспользованы. CPU3s/address-space512MiB/output4096bytes/open-files32, wall6s, два одновременных worker на процесс. Осмотрено содержимое src/__init__.py: worker не подтягивает config/.env. Linux-only hard-resource contract; на native macOS503, без тихого обхода.
+- [~] Локально23 PDF tests:21 passed,2 Linux resource tests явно skipped на macOS;12 HTTP-façade tests и21 DOCX unit tests прошли. Реальный parent timeout убил/reap worker, неизвестные/большие ответы/ошибки старта/busy дают отказ без содержимого/ключей, параметры ресурса в subprocess готовы для LinuxCI. Добавлены15 настоящих PostgreSQL upload-сценариев (оба маршрута, encrypted empty/non-empty, страницы/потоки, text/image-only PDF), их выполнение ожидается в CI.
+- [ ] Полный API/upload/core/CI и покрытие≥80%, ruff/format/compile, независимое ревью → один проход исправлений RED→GREEN, Draft MR. T17 целиком не закрывать и не развёртывать автоматически.
+
+Источники: [PDFMiner composable API](https://pdfminersix.readthedocs.io/en/latest/tutorial/composable.html), [PDFDocument implementation](https://github.com/pdfminer/pdfminer.six/blob/master/pdfminer/pdfdocument.py), [PDFPage implementation](https://github.com/pdfminer/pdfminer.six/blob/master/pdfminer/pdfpage.py), [Python resource](https://docs.python.org/3/library/resource.html).
+
+- 28.10.2026 T17.2: подтверждена совместимость с xref stream (PDF1.5+), не только classic xref. Локальный compatibility-тест первоначально имел missing import, исправлен до зелёного прогона; ошибка не скрыта. Тесты не читают реальные дела или конфигурацию провайдера.
