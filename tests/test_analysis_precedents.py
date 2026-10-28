@@ -12,13 +12,14 @@ from tests.fixtures.fake_embedder import HashingEmbedder
 from tests.fixtures.synthetic_verdicts import PRACTICE_ROBBERY, PRACTICE_THEFT, SINGLE_CONDITIONAL
 
 TERM = "на срок 1 (один) год 6 (шесть) месяцев"
-# Same qualification, different terms: 6, 12, 18, 24 and 30 months.
+# Same qualification, different terms: 6, 12, 18, 24, 30 and 36 months.
 TERMS = {
     6: "на срок 6 (шесть) месяцев",
     12: "на срок 1 (один) год",
     18: TERM,
     24: "на срок 2 (два) года",
     30: "на срок 2 (два) года 6 (шесть) месяцев",
+    36: "на срок 3 (три) года",
 }
 
 
@@ -76,18 +77,19 @@ async def test_practice_comparison_and_scale_band(client):
     await _practice(*(_theft(m, i) for i, m in enumerate(TERMS)))
     result = await _analyse(client)
     practice = result["practice"]
-    assert practice["with_term"] == 5 and practice["enough_data"] is True
+    assert practice["with_term"] == 6 and practice["enough_data"] is True
+    # inclusive quartiles of 6..36 step 6: 13.5, 21, 28.5
     assert (practice["p25_months"], practice["median_months"], practice["p75_months"]) == (
-        12,
-        18,
-        24,
+        13.5,
+        21,
+        28.5,
     )
     # the draft imposes 4 years 6 months: above every comparable term
     assert practice["draft_months"] == 54 and practice["position"] == "above"
     assert practice["draft_percentile"] == 100
-    scale = result["scale"]
-    if scale is not None:  # drawn only when the sanction maximum is known
-        assert scale["practice_months"] == [12, 24] and scale["avg_similar_months"] == 18
+    # rounded half up on both ends: Python's round() would give 14 and 28
+    assert result["scale"]["practice_months"] == [14, 29]
+    assert result["scale"]["avg_similar_months"] == 21
 
 
 async def test_too_little_practice_gives_statistics_without_position(client):
