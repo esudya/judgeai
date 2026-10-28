@@ -109,7 +109,8 @@
 - [x] Использованы upstream инструкции [workflow](https://docs.gitlab.com/ci/yaml/workflow/) и [job rules](https://docs.gitlab.com/ci/jobs/job_rules/); локальный YAML parser не заменяет GitLab CI lint.
 - [x] Независимое read-only ревью проверило конфигурацию и тела генератора/12 тестов; actionable findings нет. Повторный тестовый прогон и --check зелёные.
 - [x] Создан [Draft MR !18](https://gitlab.com/judgeai/judgeai/-/merge_requests/18) в родительскую ветку !16, код 8ea4f632. GitLab принял YAML; [pipeline 2996998760](https://gitlab.com/judgeai/judgeai/-/pipelines/2996998760) и blocking job inventory завершились success на shared Linux/amd64 runner (12,27 с). Хеш .gitlab-ci.yml совпал с опубликованным blob.
-- [ ] После обновления журнала проверить MR pipeline на последнем SHA. Проверка default branch/tag правил отдельно не запускалась; выделенный CI lint API недоступен в коннекторе. Полная T19 и интеграция !16/!18 остаются открытыми; слияние/развёртывание не выполнялись.
+- [x] После обновления журнала [MR pipeline 2997000937](https://gitlab.com/judgeai/judgeai/-/pipelines/2997000937) на 60a50776 завершился success, yaml_errors=null. Для коммита с открытым MR создан один MR pipeline, без второго push pipeline. Предыдущий MR pipeline 2996999401 тоже success. Реализация T19.1 проверена локально и на GitLab runner.
+- [ ] Интеграция !16/!18 и полный остаток T19. Default branch/tag правила отдельно не запускались; выделенный CI lint API недоступен в коннекторе. Финальный коммит журнала не меняет проверенную конфигурацию или тесты; слияние/развёртывание не выполнялись.
 
 ## Постоянные правила выполнения
 
