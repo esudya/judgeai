@@ -1,0 +1,7 @@
+---
+description: JudgeAI architecture, reuse, tests and truthful plan progress
+alwaysApply: true
+---
+
+Follow the canonical project engineering rules in `AGENTS.md`.
+Keep `docs/TASKS.md` and the relevant implementation plan synchronized with verified progress.
