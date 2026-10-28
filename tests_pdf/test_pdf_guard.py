@@ -37,6 +37,13 @@ class PdfGuardTests(unittest.TestCase):
                 self.inspect(content)
             self.assertEqual(error.exception.code, "pdf_invalid")
 
+    def test_stream_length_cannot_hide_ignored_bytes(self):
+        for declared in (0, 1, 5, 8):
+            raw = pdf(extra=[f"<< /Length {declared} >>\nstream\nabcdef\nendstream".encode()])
+            with self.subTest(declared=declared), self.assertRaises(UploadRejected) as error:
+                self.inspect(raw)
+            self.assertEqual(error.exception.code, "pdf_invalid")
+
     def test_empty_password_and_locked_encryption_are_both_rejected(self):
         for fixture in (ENCRYPTED_EMPTY, ENCRYPTED_LOCKED):
             with self.assertRaises(UploadRejected) as error:

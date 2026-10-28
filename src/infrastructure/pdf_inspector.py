@@ -3,6 +3,7 @@
 import math
 import re
 from typing import BinaryIO
+from weakref import WeakKeyDictionary
 
 from src.domain.uploads import PdfInspection, PdfLimits, reject_pdf, require_pdf_budget
 
@@ -32,10 +33,36 @@ def inspect_pdf(source: BinaryIO, limits: PdfLimits) -> PdfInspection:
     except ImportError:
         raise reject_pdf("pdf_unavailable") from None
 
+    raw_sizes = WeakKeyDictionary()
+
+    class BoundedParser(PDFParser):
+        def do_keyword(self, pos, token):
+            super().do_keyword(pos, token)
+            if token is self.KEYWORD_STREAM:
+                start, value = self.curstack[-1]
+                raw_size = len(value.rawdata)
+                boundary = self.tell()
+                gap = boundary - start - raw_size
+                if gap not in (0, 1, 2):
+                    raise reject_pdf("pdf_invalid")
+                position = self.fp.tell()
+                try:
+                    self.fp.seek(start + raw_size)
+                    separator = self.fp.read(gap)
+                    if separator not in (b"", b"\n", b"\r", b"\r\n"):
+                        raise reject_pdf("pdf_invalid")
+                    if self.fp.read(9) != b"endstream":
+                        raise reject_pdf("pdf_invalid")
+                    if self.fp.read(1) not in (b" ", b"\t", b"\r", b"\n", b"\x00", b"\x0c"):
+                        raise reject_pdf("pdf_invalid")
+                finally:
+                    self.fp.seek(position)
+                raw_sizes[value] = raw_size
+
     strict = settings.STRICT
     settings.STRICT = True
     try:
-        document = PDFDocument(PDFParser(source), fallback=False)
+        document = PDFDocument(BoundedParser(source), fallback=False)
         if document.encryption is not None:
             raise reject_pdf("pdf_encrypted")
         ids = set()
@@ -59,14 +86,13 @@ def inspect_pdf(source: BinaryIO, limits: PdfLimits) -> PdfInspection:
             elif isinstance(value, PDFStream):
                 walk(value.attrs, depth + 1)
                 require_pdf_budget(len(value.get_filters()), limits.max_filters)
-                raw_size = len(value.rawdata) if value.rawdata is not None else None
+                raw_size = raw_sizes[value]
                 data = value.get_data()
                 size = len(data)
                 require_pdf_budget(size, limits.max_stream_bytes)
                 decoded_bytes += size
                 require_pdf_budget(decoded_bytes, limits.max_total_decoded_bytes)
-                if raw_size is not None:
-                    require_pdf_budget(size, raw_size * limits.max_ratio)
+                require_pdf_budget(size, raw_size * limits.max_ratio)
                 if (
                     value.attrs.get("Subtype") is not None
                     and literal_name(value.attrs["Subtype"]) == "Image"
