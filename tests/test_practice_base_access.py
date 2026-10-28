@@ -74,3 +74,31 @@ async def test_private_case_documents_never_reach_other_users():
         await _ordinary(client)
         listing = (await client.get("/api/knowledge/verdicts")).json()
         assert listing["total"] == 1 and "alice.txt" not in str(listing)
+
+
+async def test_upload_matching_a_private_document_creates_a_shared_one():
+    """Uploading text that equals another user's case document must not reveal that document."""
+    from src.services.knowledge_service import calculate_text_hash
+
+    async with async_session_factory() as db:
+        private = KnowledgeVerdict(
+            raw_text=PRACTICE_THEFT,
+            source_type="chat",
+            source_filename="alice-case.txt",
+            case_number="1-777/2026",
+            file_hash=calculate_text_hash(PRACTICE_THEFT),
+        )
+        db.add(private)
+        await db.commit()
+        private_id = private.id
+    async with anonymous() as client:
+        await _ordinary(client)
+        r = await client.post(
+            "/api/knowledge/verdicts/upload",
+            files=[("files", ("bob.txt", PRACTICE_THEFT.encode(), "text/plain"))],
+        )
+        assert r.status_code == 200, r.text
+        item = r.json()["items"][0]
+        assert item["verdict_id"] != private_id
+        assert item["duplicate"] is False and "alice-case" not in r.text and "1-777" not in r.text
+        assert (await client.get("/api/knowledge/verdicts")).json()["total"] == 1
