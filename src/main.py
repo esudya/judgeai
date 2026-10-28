@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api import chats, knowledge, legal_library
+from src.api import chats, criminal_sanctions, knowledge, legal_library
 from src.config import settings
 from src.services.analysis_runner import fail_interrupted_analyses
 
@@ -38,6 +38,9 @@ app.add_middleware(
 app.include_router(chats.router, prefix="/api/chats", tags=["chats"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
 app.include_router(legal_library.router, prefix="/api/legal", tags=["legal library"])
+app.include_router(
+    criminal_sanctions.router, prefix="/api/legal/sanctions", tags=["criminal sanctions"]
+)
 
 
 @app.get("/health")

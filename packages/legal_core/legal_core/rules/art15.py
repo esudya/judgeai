@@ -14,10 +14,16 @@ _YEAR = 12
 
 # Upper imprisonment bound (months, inclusive) per category and form of guilt, ч. 2–4.
 _LIMITS: dict[Guilt, list[tuple[int, Category]]] = {
-    Guilt.INTENTIONAL: [(3 * _YEAR, Category.SMALL), (5 * _YEAR, Category.MEDIUM),
-                        (10 * _YEAR, Category.GRAVE)],
-    Guilt.NEGLIGENT: [(3 * _YEAR, Category.SMALL), (10 * _YEAR, Category.MEDIUM),
-                      (15 * _YEAR, Category.GRAVE)],
+    Guilt.INTENTIONAL: [
+        (3 * _YEAR, Category.SMALL),
+        (5 * _YEAR, Category.MEDIUM),
+        (10 * _YEAR, Category.GRAVE),
+    ],
+    Guilt.NEGLIGENT: [
+        (3 * _YEAR, Category.SMALL),
+        (10 * _YEAR, Category.MEDIUM),
+        (15 * _YEAR, Category.GRAVE),
+    ],
 }
 
 # ч. 6: max imposed imprisonment allowing the change, keyed by the ORIGINAL category.

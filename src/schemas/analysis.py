@@ -111,6 +111,9 @@ class LegalFacts(BaseModel):
     harsher_than_imprisonment: CitedFact | None = None
     real_imprisonment: CitedFact | None = None
     history_complete: CitedFact | None = None
+    # Punishment imposed in the operative part of the draft (imprisonment, whole months).
+    imposed_imprisonment_months: CitedFact | None = None
+    art64_applied: CitedFact | None = None
     # Each dictionary describes ONE distinct prior judgment and cites every supplied field.
     prior_convictions: list[dict[str, CitedFact]] = Field(default_factory=list, max_length=100)
 
