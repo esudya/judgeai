@@ -72,9 +72,9 @@ class ConvictionFactsTest(unittest.TestCase):
         self.assertFalse(prior.adult_at_offence)
 
     def test_revocation_before_new_offence(self):
-        cond = conviction(conditional_or_deferred=True, sent_to_prison_on=date(2025, 1, 1))
+        cond = conviction(conditional_or_deferred=True, revocation_decision_date=date(2025, 1, 1))
         self.assertTrue(record(cond).priors_for(OFFENCE)[0].revoked_and_sent_before_offence)
-        late = replace(cond, sent_to_prison_on=date(2026, 7, 1))
+        late = replace(cond, revocation_decision_date=date(2026, 7, 1))
         self.assertFalse(record(late).priors_for(OFFENCE)[0].revoked_and_sent_before_offence)
 
     def test_unknown_or_ambiguous_facts_give_no_priors(self):
@@ -84,7 +84,7 @@ class ConvictionFactsTest(unittest.TestCase):
             record(conviction(legal_force_date=OFFENCE)),  # same day: order unknown
             record(conviction(active_at_offence=None)),
             record(conviction(offence_date=None)),
-            record(conviction(conditional_or_deferred=True, sent_to_prison_on=OFFENCE)),
+            record(conviction(conditional_or_deferred=True, revocation_decision_date=OFFENCE)),
         ]
         for item in cases:
             with self.subTest(item=item):
@@ -119,3 +119,19 @@ class ClassifyRecordTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RevocationDecisionTest(unittest.TestCase):
+    def test_decision_before_new_offence_counts_even_when_transfer_is_later(self):
+        # The decision date is decisive; actual transfer on May 20 is irrelevant.
+        prior = conviction(conditional_or_deferred=True, sent_to_prison_on=date(2026, 5, 20))
+        prior = replace(prior, revocation_decision_date=date(2026, 5, 1))
+        self.assertEqual(classify_record(record(prior), GRAVE_REAL, OFFENCE), Recidivism.SIMPLE)
+
+    def test_physical_transfer_alone_does_not_prove_revocation_decision_date(self):
+        prior = conviction(conditional_or_deferred=True, sent_to_prison_on=date(2026, 5, 1))
+        self.assertEqual(classify_record(record(prior), GRAVE_REAL, OFFENCE), Recidivism.UNKNOWN)
+
+    def test_missing_revocation_decision_is_unknown(self):
+        prior = conviction(conditional_or_deferred=True)
+        self.assertEqual(classify_record(record(prior), GRAVE_REAL, OFFENCE), Recidivism.UNKNOWN)

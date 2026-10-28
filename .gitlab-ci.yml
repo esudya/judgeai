@@ -1,0 +1,72 @@
+# Source inventory checks only; API and database verification remain separate.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+inventory:
+  stage: test
+  image: python:3.12-slim-bookworm
+  timeout: 5m
+  interruptible: true
+  allow_failure: false
+  script:
+    - python -m unittest discover -s tests_unit -v
+    - python tools/dependency_inventory.py --check
+
+api-tests:
+  stage: test
+  image: python:3.12-slim-bookworm
+  timeout: 15m
+  allow_failure: false
+  services:
+    - name: pgvector/pgvector:pg16
+      alias: postgres
+  variables:
+    POSTGRES_USER: judgeai
+    POSTGRES_PASSWORD: ephemeral-ci-only
+    POSTGRES_DB: judgeai_test
+    POSTGRES_HOST: postgres
+    LLM_PROVIDER: fake
+    DB_NULL_POOL: 'true'
+  script:
+    - pip install '.[dev]' ./packages/legal_core
+    - pytest tests tests_uploads tests_uploads_http --cov=src
+    - cd packages/legal_core && pytest && cd ../..
+    - ruff check src tests packages/legal_core tests_browser tests_uploads tests_uploads_http
+    - ruff format --check src tests packages/legal_core tests_browser tests_uploads tests_uploads_http
+
+browser-auth:
+  stage: test
+  image: node:22-bookworm
+  timeout: 20m
+  allow_failure: false
+  services:
+    - name: pgvector/pgvector:pg16
+      alias: postgres
+  variables:
+    POSTGRES_USER: judgeai
+    POSTGRES_PASSWORD: ephemeral-ci-only
+    POSTGRES_DB: judgeai_browser_test
+    POSTGRES_HOST: postgres
+    LLM_PROVIDER: fake
+    DB_NULL_POOL: 'true'
+    AUTH_COOKIE_SECURE: 'false'
+    UPLOAD_DIR: /tmp/judgeai-browser-uploads
+    CORS_ORIGINS: http://127.0.0.1:5179
+  script:
+    - apt-get update -qq && apt-get install -y -qq python3-venv
+    - python3 -m venv /tmp/acceptance-python
+    - . /tmp/acceptance-python/bin/activate
+    - pip install '.[dev]' ./packages/legal_core 'playwright==1.64.1'
+    - playwright install --with-deps chromium
+    - cd verdikt-web && npm ci && npm test && npm run build && cd ..
+    - python tests_browser/auth_smoke.py
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - acceptance-screenshots/*.png

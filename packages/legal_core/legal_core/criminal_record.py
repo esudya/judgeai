@@ -47,9 +47,12 @@ class Conviction:
     legal_force_date: date | None
     imprisoned_by_sentence: bool
     conditional_or_deferred: bool
-    # Date the person was sent to serve imprisonment after revocation; None = not sent.
+    # Legacy physical transfer date; retained for callers, never proves the court decision.
     sent_to_prison_on: date | None
     active_at_offence: bool | None
+    # Date of the court decision revoking suspension and directing imprisonment.
+    # None means unknown; physical transfer/start of custody is not decisive (Plenum 58 p.45).
+    revocation_decision_date: date | None = None
 
 
 @dataclass(frozen=True)
@@ -75,10 +78,8 @@ class CriminalRecord:
         before = _strictly_before(c.legal_force_date, offence_date)
         if not c.conditional_or_deferred:
             revoked = False
-        elif c.sent_to_prison_on is None:
-            revoked = False
         else:
-            revoked = _strictly_before(c.sent_to_prison_on, offence_date)
+            revoked = _strictly_before(c.revocation_decision_date, offence_date)
         conditions = [
             c.guilt == Guilt.INTENTIONAL,
             c.category != Category.SMALL,
