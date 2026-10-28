@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.error import URLError
@@ -214,7 +215,9 @@ class BrowserAuthAcceptance(unittest.TestCase):
                         )
                         await db.commit()
 
-                asyncio.run(expire())
+                # Playwright sync owns an event loop on this thread.
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    executor.submit(lambda: asyncio.run(expire())).result(timeout=20)
                 page.reload()
                 expect(page.get_by_label("Username", exact=True)).to_be_visible()
                 self.assertEqual(context.request.get(URL + "/api/chats").status, 401)
