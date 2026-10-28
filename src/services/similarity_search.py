@@ -76,7 +76,7 @@ async def _keyword_fallback(
     stmt = (
         select(KnowledgeVerdict)
         .join(KnowledgeChunk, KnowledgeChunk.verdict_id == KnowledgeVerdict.id)
-        .where(or_(*conditions))
+        .where(or_(*conditions), KnowledgeVerdict.source_type.not_in(PRIVATE_SOURCE_TYPES))
         .distinct()
         .limit(limit)
     )
