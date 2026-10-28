@@ -3,13 +3,14 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select
 
-from src.api.deps import AdminUser, DbSession
+from src.api.deps import AdminUser, CurrentUser, DbSession
 from src.api.precedents import get_embedder
 from src.application.precedent_cards import CARD_EXTRACTOR_VERSION
 from src.application.similar_precedents import EmbeddingPort, IndexPrecedents, StoredCard
 from src.db import session as db_session
 from src.db.models import KnowledgeChunk, KnowledgeVerdict
 from src.domain.documents import reading_warnings
+from src.domain.practice import PRIVATE_SOURCE_TYPES
 from src.infrastructure.precedent_store import SqlPrecedentStore
 from src.infrastructure.verdict_reader import RegexVerdictReader
 from src.schemas.knowledge import (
@@ -64,7 +65,7 @@ async def _embed_precedents(embedder: EmbeddingPort) -> None:
 @router.post("/verdicts/upload", response_model=KnowledgeUploadResponse)
 async def upload_verdicts(
     db: DbSession,
-    user: AdminUser,
+    user: CurrentUser,
     background: BackgroundTasks,
     files: list[UploadFile] = File(default_factory=list),
     source_type: str = Form("manual"),
