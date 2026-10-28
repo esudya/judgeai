@@ -75,3 +75,23 @@ def test_ceiling_for_missing_part_is_none():
 
 def test_ceiling_refuses_life_imprisonment_without_any_term():
     assert sanction_ceiling_for_part([_sanction(PunishmentKind.LIFE_IMPRISONMENT)], part=2) is None
+
+
+def test_punishment_term_validates_amount_and_unit():
+    from legal_core.entities import PunishmentTerm
+
+    assert (
+        PunishmentTerm(PunishmentKind.IMPRISONMENT, 18, MeasureUnit.MONTHS).imprisonment_months
+        == 18
+    )
+    assert PunishmentTerm(PunishmentKind.FINE, 5000, MeasureUnit.RUBLES).imprisonment_months is None
+    with pytest.raises(ValueError):
+        PunishmentTerm(PunishmentKind.IMPRISONMENT, 18)
+    with pytest.raises(ValueError):
+        PunishmentTerm(PunishmentKind.IMPRISONMENT, 0, MeasureUnit.MONTHS)
+
+
+def test_empty_imposed_sentence():
+    from legal_core.entities import ImposedSentence
+
+    assert ImposedSentence().is_empty

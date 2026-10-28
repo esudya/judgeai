@@ -179,3 +179,23 @@ async def test_fake_analysis_is_labelled_as_development(client):
     await client.post(f"/api/chats/{chat_id}/messages", data={"content": "Synthetic verdict"})
     messages = (await client.get(f"/api/chats/{chat_id}/messages")).json()
     assert any("development" in w.lower() for w in messages[-1]["result"]["warnings"])
+
+
+async def test_operative_part_of_uploaded_draft_is_read_per_count(client):
+    from tests.fixtures.synthetic_verdicts import MULTI_COUNT
+
+    chat_id = await _new_chat(client)
+    r = await client.post(
+        f"/api/chats/{chat_id}/messages",
+        data={"content": "Проверь проект"},
+        files=[_txt("Проект приговора.txt", MULTI_COUNT)],
+    )
+    msg_id = r.json()["assistant_message"]["id"]
+    result = (await client.get(f"/api/chats/{chat_id}/messages/{msg_id}")).json()["result"]
+    sentence = result["imposed_sentence"]
+    assert [c["imprisonment_months"] for c in sentence["counts"]] == [30, 20]
+    assert sentence["aggregation_rule"] == "ч. 3 ст. 69 УК РФ"
+    norms = [c["norm"] for c in result["legal_checks"]]
+    # No sanctions are imported in the test database: every count is explicitly unchecked.
+    assert "Назначенное наказание · п. «г» ч. 3 ст. 158 УК РФ" in norms
+    assert "Окончательное наказание (ч. 3 ст. 69 УК РФ)" in norms
