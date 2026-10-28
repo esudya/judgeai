@@ -118,3 +118,51 @@ class ArticleReference:
     def __str__(self) -> str:
         prefix = f"ч. {self.part} " if self.part is not None else ""
         return f"{prefix}ст. {self.article} УК РФ"
+
+
+@dataclass(frozen=True)
+class PunishmentTerm:
+    """A concrete punishment from a verdict: kind plus its amount in the unit of that kind."""
+
+    kind: PunishmentKind
+    amount: float | None = None
+    unit: MeasureUnit | None = None
+
+    def __post_init__(self) -> None:
+        if self.amount is not None and self.amount <= 0:
+            raise ValueError("punishment amount must be positive")
+        if (self.amount is None) != (self.unit is None):
+            raise ValueError("amount and unit go together")
+
+    @property
+    def imprisonment_months(self) -> int | None:
+        if self.kind is PunishmentKind.IMPRISONMENT and self.unit is MeasureUnit.MONTHS:
+            return int(self.amount)
+        return None
+
+
+@dataclass(frozen=True)
+class CountSentence:
+    """Punishment imposed for one count (one qualification) of the verdict."""
+
+    qualification: str
+    reference: ArticleReference | None
+    main: PunishmentTerm
+    additional: tuple[PunishmentTerm, ...] = ()
+    quote: str = ""
+
+
+@dataclass(frozen=True)
+class ImposedSentence:
+    """Everything the operative part imposes: per count, the final aggregate and probation."""
+
+    counts: tuple[CountSentence, ...] = ()
+    final: PunishmentTerm | None = None
+    aggregation_rule: str | None = None
+    conditional: bool = False
+    probation_months: int | None = None
+    final_quote: str = ""
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.counts and self.final is None

@@ -65,8 +65,28 @@ class DraftDocument(ApiModel):
     note: str
 
 
+class ImposedCountRead(ApiModel):
+    qualification: str
+    punishment: str
+    additional: list[str] = []
+    imprisonment_months: int | None = None
+    quote: str
+
+
+class ImposedSentenceRead(ApiModel):
+    """Punishment read from the operative part of the uploaded draft (regex, windows via LLM)."""
+
+    counts: list[ImposedCountRead] = []
+    final: str | None = None
+    aggregation_rule: str | None = None
+    conditional: bool = False
+    probation_months: int | None = None
+    final_quote: str | None = None
+
+
 class CaseAnalysis(ApiModel):
     legal_checks: list["LegalCheck"] = Field(default_factory=list)
+    imposed_sentence: ImposedSentenceRead | None = None
     schema_version: Literal[1] = SCHEMA_VERSION
     stats: AnalysisStats
     prompt: str

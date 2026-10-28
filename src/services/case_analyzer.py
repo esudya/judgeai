@@ -7,14 +7,22 @@ The LLM only extracts facts (LlmCaseFacts). Everything that is arithmetic over t
 import json
 import logging
 
-from legal_core.entities import ArticleReference, ImposedPunishment, SanctionCeiling
-from legal_core.rules.imposed_term import check_imposed_imprisonment
+from legal_core.entities import (
+    ArticleReference,
+    CountSentence,
+    ImposedPunishment,
+    ImposedSentence,
+    SanctionCeiling,
+)
+from legal_core.rules.imposed_term import check_imposed_imprisonment, check_imposed_punishment
 from legal_core.rules.sanction_ceiling import sanction_ceiling_for_part
 from pydantic import ValidationError
 
 from src.schemas.analysis import (
     AnalysisStats,
     CaseAnalysis,
+    ImposedCountRead,
+    ImposedSentenceRead,
     LegalCheck,
     LlmCaseFacts,
     SentenceScale,
@@ -23,7 +31,7 @@ from src.schemas.analysis import (
 from src.services.criminal_sanction_lookup import StatuteSanctionReading
 from src.services.legal_checks import build_legal_checks
 from src.services.llm_client import LLMClient, LLMError
-from src.services.sanction_summary import describe_main_alternatives
+from src.services.sanction_summary import describe_main_alternatives, describe_term
 from src.services.sentencing import art62_part1_limit
 
 logger = logging.getLogger(__name__)
@@ -97,8 +105,14 @@ def assemble_analysis(
     extra_warnings: list[str],
     document_texts: list[str] | None = None,
     statute: StatuteSanctionReading | None = None,
+    sentence: ImposedSentence | None = None,
+    count_statutes: dict[ArticleReference, StatuteSanctionReading] | None = None,
+    model_texts: list[str] | None = None,
 ) -> CaseAnalysis:
+    """sentence/count_statutes come from the operative part read by regex; when present, the
+    imposed punishment is checked per count instead of the single model-cited term."""
     warnings = list(extra_warnings)
+    per_count = sentence is not None and bool(sentence.counts)
     ceiling = _statutory_ceiling(statute)
     sanction_max_months = facts.sanction_max_months
     statute_checks: list[LegalCheck] = []
@@ -116,17 +130,24 @@ def assemble_analysis(
                 f"{statutory_max} мес.; использовано значение из текста УК РФ."
             )
         sanction_max_months = statutory_max
-    context_size = len("\n\n---\n\n".join(t for t in document_texts or [] if t.strip()))
+    prompt_texts = model_texts if model_texts is not None else document_texts or []
+    context_size = len("\n\n---\n\n".join(t for t in prompt_texts if t.strip()))
+    if model_texts is not None and sum(map(len, model_texts)) < sum(map(len, document_texts or [])):
+        warnings.append(
+            "Для модели сокращена описательная часть; вводная и резолютивная части "
+            "переданы полностью."
+        )
     if context_size > DOCUMENT_CHARS_LIMIT:
         warnings.append(
             f"Model context limited to {DOCUMENT_CHARS_LIMIT} characters; "
             f"{context_size - DOCUMENT_CHARS_LIMIT} characters were omitted. "
             "This analysis does not cover the complete documents."
         )
+    # Quotes are accepted only from what the model actually saw.
     source_text = "\n".join(
         [
             prompt,
-            "\n\n---\n\n".join(t for t in document_texts or [] if t.strip())[:DOCUMENT_CHARS_LIMIT],
+            "\n\n---\n\n".join(t for t in prompt_texts if t.strip())[:DOCUMENT_CHARS_LIMIT],
         ]
     )
     art62_limit = (
@@ -134,7 +155,9 @@ def assemble_analysis(
         if sanction_max_months
         else None
     )
-    if _single_part(statute):
+    if per_count:
+        statute_checks = _count_checks(sentence, count_statutes or {}, facts)
+    elif _single_part(statute):
         statute_checks.append(
             _imposed_term_check(statute, facts.legal_facts, source_text, art62_limit)
         )
@@ -166,6 +189,7 @@ def assemble_analysis(
             source_text,
             statutory_ceiling=ceiling,
         ),
+        imposed_sentence=_sentence_read(sentence),
         stats=AnalysisStats(documents=documents, pages=pages, seconds=seconds),
         prompt=prompt,
         fabula=facts.fabula,
@@ -212,6 +236,97 @@ def _statute_sanction_check(statute: StatuteSanctionReading) -> LegalCheck:
             "Это техническое чтение текста: редакция не проверена юристом."
         ),
         evidence=[first.clause],
+    )
+
+
+def _count_checks(
+    sentence: ImposedSentence,
+    statutes: dict[ArticleReference, StatuteSanctionReading],
+    facts: LlmCaseFacts,
+) -> list[LegalCheck]:
+    """Sanction and imposed-punishment checks for every count of the operative part."""
+    checks: list[LegalCheck] = []
+    seen_sanctions: set[ArticleReference] = set()
+    for count in sentence.counts:
+        reading = statutes.get(count.reference) if count.reference else None
+        if not _single_part(reading):
+            checks.append(_unchecked_count(count))
+            continue
+        if count.reference not in seen_sanctions:
+            seen_sanctions.add(count.reference)
+            checks.append(_statute_sanction_check(reading))
+        ceiling = _statutory_ceiling(reading)
+        limit = None
+        if ceiling is not None and ceiling.max_imprisonment_months:
+            limit = art62_part1_limit(
+                ceiling.max_imprisonment_months, facts.mitigating, facts.aggravating
+            )
+        result = check_imposed_punishment(
+            count.main,
+            reading.sanctions,
+            source=reading.provenance.source_url,
+            art62_limit_months=limit,
+        )
+        checks.append(
+            LegalCheck(
+                norm=f"{result.norm} · {count.qualification}",
+                status=result.status.value,
+                explanation=result.explanation,
+                source=result.source,
+                value=describe_term(count.main),
+                evidence=[count.quote] if count.quote else [],
+            )
+        )
+    if sentence.final is not None:
+        checks.append(
+            LegalCheck(
+                norm=f"Окончательное наказание ({sentence.aggregation_rule or 'ст. 69/70 УК РФ'})",
+                status="insufficient_data",
+                value=describe_term(sentence.final),
+                source="ст. 69, 70 УК РФ",
+                explanation=(
+                    "Окончательное наказание прочитано из резолютивной части; правила сложения "
+                    "наказаний по ст. 69 и 70 УК РФ пока не проверяются."
+                ),
+                evidence=[sentence.final_quote] if sentence.final_quote else [],
+            )
+        )
+    return checks
+
+
+def _unchecked_count(count: CountSentence) -> LegalCheck:
+    return LegalCheck(
+        norm=f"Назначенное наказание · {count.qualification or 'эпизод без квалификации'}",
+        status="insufficient_data",
+        value=describe_term(count.main),
+        source="",
+        explanation=(
+            "Санкция для этой квалификации не найдена в импортированном тексте УК РФ "
+            "или в квалификации не указана часть статьи."
+        ),
+        evidence=[count.quote] if count.quote else [],
+    )
+
+
+def _sentence_read(sentence: ImposedSentence | None) -> ImposedSentenceRead | None:
+    if sentence is None or sentence.is_empty:
+        return None
+    return ImposedSentenceRead(
+        counts=[
+            ImposedCountRead(
+                qualification=c.qualification,
+                punishment=describe_term(c.main),
+                additional=[describe_term(a) for a in c.additional],
+                imprisonment_months=c.main.imprisonment_months,
+                quote=c.quote,
+            )
+            for c in sentence.counts
+        ],
+        final=describe_term(sentence.final) if sentence.final else None,
+        aggregation_rule=sentence.aggregation_rule,
+        conditional=sentence.conditional,
+        probation_months=sentence.probation_months,
+        final_quote=sentence.final_quote or None,
     )
 
 

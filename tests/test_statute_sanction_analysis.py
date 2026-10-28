@@ -125,3 +125,71 @@ def test_imposed_term_with_fabricated_quote_is_not_checked():
     }
     check = checks["Назначенное наказание: пределы санкции и ч. 1 ст. 62 УК РФ"]
     assert check.status == "insufficient_data" and check.value is None
+
+
+def _per_count(sentence, statutes, text="приговор", model_texts=None):
+    return assemble_analysis(
+        LlmCaseFacts.model_validate(
+            {
+                "fabula": "Кражи",
+                "mitigating": [{"name": "Явка с повинной", "norm": "п. «и» ч. 1 ст. 61"}],
+            }
+        ),
+        prompt="",
+        documents=1,
+        pages=1,
+        seconds=1,
+        similar_items=[],
+        extra_warnings=[],
+        document_texts=[text],
+        sentence=sentence,
+        count_statutes=statutes,
+        model_texts=model_texts,
+    )
+
+
+def test_each_count_is_checked_against_its_own_sanction():
+    from legal_core.entities import (
+        ArticleReference,
+        CountSentence,
+        ImposedSentence,
+        PunishmentTerm,
+    )
+
+    part2 = ArticleReference("158", 2)
+    unknown = ArticleReference("999", 1)
+    months = lambda n: PunishmentTerm(PunishmentKind.IMPRISONMENT, n, MeasureUnit.MONTHS)  # noqa: E731
+    sentence = ImposedSentence(
+        counts=(
+            CountSentence("п. «в» ч. 2 ст. 158 УК РФ", part2, months(54), (), "на срок 4 года 6"),
+            CountSentence("ч. 2 ст. 158 УК РФ", part2, months(30), (), "на срок 2 года 6"),
+            CountSentence("ч. 1 ст. 999 УК РФ", unknown, months(12), (), "на срок 1 год"),
+        ),
+        final=months(60),
+        aggregation_rule="ч. 2 ст. 69 УК РФ",
+        final_quote="окончательно 5 лет",
+    )
+    result = _per_count(sentence, {part2: PART_2})
+    by_norm = {c.norm: c for c in result.legal_checks}
+    sanction_checks = [c for c in result.legal_checks if c.norm.startswith("Санкция")]
+    assert len(sanction_checks) == 1
+    first = by_norm[
+        "Назначенное наказание: пределы санкции и ч. 1 ст. 62 УК РФ · п. «в» ч. 2 ст. 158 УК РФ"
+    ]
+    second = by_norm[
+        "Назначенное наказание: пределы санкции и ч. 1 ст. 62 УК РФ · ч. 2 ст. 158 УК РФ"
+    ]
+    assert first.status == "possible_violation" and first.value == "лишение свободы 4 г. 6 мес."
+    assert second.status == "ok"
+    assert by_norm["Назначенное наказание · ч. 1 ст. 999 УК РФ"].status == "insufficient_data"
+    final = by_norm["Окончательное наказание (ч. 2 ст. 69 УК РФ)"]
+    assert final.status == "insufficient_data" and final.evidence == ["окончательно 5 лет"]
+    read = result.imposed_sentence
+    assert [c.imprisonment_months for c in read.counts] == [54, 30, 12]
+    assert read.final == "лишение свободы 5 г." and read.aggregation_rule == "ч. 2 ст. 69 УК РФ"
+
+
+def test_shortened_model_text_is_reported():
+    result = _per_count(None, {}, text="длинный текст приговора", model_texts=["короткий"])
+    assert any("сокращена описательная часть" in w for w in result.warnings)
+    assert result.imposed_sentence is None

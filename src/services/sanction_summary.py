@@ -1,6 +1,12 @@
 """Presentation: short Russian description of statutory sanctions for reports and the UI."""
 
-from legal_core.entities import MeasureUnit, PunishmentKind, SanctionRole, StatutorySanction
+from legal_core.entities import (
+    MeasureUnit,
+    PunishmentKind,
+    PunishmentTerm,
+    SanctionRole,
+    StatutorySanction,
+)
 
 _KIND_NAMES = {
     PunishmentKind.FINE: "штраф",
@@ -42,3 +48,11 @@ def describe_sanction(sanction: StatutorySanction) -> str:
 def describe_main_alternatives(sanctions: list[StatutorySanction]) -> str:
     main = [describe_sanction(s) for s in sanctions if s.role is SanctionRole.MAIN]
     return "; ".join(dict.fromkeys(main))
+
+
+def describe_term(term: PunishmentTerm) -> str:
+    """'лишение свободы 2 г. 6 мес.' for an imposed punishment."""
+    name = _KIND_NAMES[term.kind]
+    if term.amount is None or term.unit is None:
+        return name
+    return f"{name} {format_amount(term.amount, term.unit)}"
