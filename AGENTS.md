@@ -4,7 +4,9 @@ Scope: all project engineering work. These rules supplement the user's session i
 
 ## Plan and evidence
 - Read docs/TASKS.md and the relevant implementation plan before starting.
-- Update the plan at task start and after every completed, verifiable step.
+- docs/TASKS.md is the sole authoritative register for every task/subtask, completed step, test result, blocker and remaining action across business, backend, frontend and architecture.
+- Update docs/TASKS.md at task start and after every completed, verifiable step.
+- Keep technical details elsewhere if useful, but mirror all substantive results and pending work in docs/TASKS.md; do not maintain independent status registers.
 - Use [ ] pending, [~] in progress, [!] blocked, [x] verified complete.
 - Distinguish implementation in a draft MR, passing checks, merged code and accepted functionality.
 - Mark a parent task complete only when its full Definition of Done is satisfied.
