@@ -1,29 +1,74 @@
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select
 
 from src.api.deps import AdminUser, DbSession
+from src.api.precedents import get_embedder
+from src.application.precedent_cards import CARD_EXTRACTOR_VERSION
+from src.application.similar_precedents import EmbeddingPort, IndexPrecedents, StoredCard
+from src.db import session as db_session
 from src.db.models import KnowledgeChunk, KnowledgeVerdict
 from src.domain.documents import reading_warnings
+from src.infrastructure.precedent_store import SqlPrecedentStore
+from src.infrastructure.verdict_reader import RegexVerdictReader
 from src.schemas.knowledge import (
     KnowledgeListResponse,
     KnowledgeUploadItem,
     KnowledgeUploadResponse,
     KnowledgeVerdictDetail,
     KnowledgeVerdictRead,
+    PrecedentIndexRead,
 )
 from src.services.document_parser import extract_document
 from src.services.file_reader import save_upload_file
 from src.services.knowledge_service import create_knowledge_verdict_from_text
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+def _precedent_read(stored: StoredCard | None) -> PrecedentIndexRead | None:
+    if stored is None:
+        return None
+    card = stored.card
+    return PrecedentIndexRead(
+        card_id=stored.id,
+        qualifications=[str(e.qualification) for e in card.episodes],
+        punishment_months=card.imprisonment_months,
+        conditional=card.conditional,
+        recidivism=card.recidivism.value if card.recidivism else None,
+    )
+
+
+async def _index_cards(db, embedder: EmbeddingPort, verdict_ids: list[int]):
+    """Build cards for the new verdicts (regex, fast) and return the cards of the uploaded ones."""
+    store = SqlPrecedentStore(db)
+    try:
+        await IndexPrecedents(store, RegexVerdictReader(), embedder).build_cards(
+            CARD_EXTRACTOR_VERSION
+        )
+    except Exception:  # the verdicts are saved; `python -m src.cli.precedents index` retries
+        logger.exception("precedent cards were not built on upload")
+        await db.rollback()
+    return await store.cards_for_verdicts(verdict_ids)
+
+
+async def _embed_precedents(embedder: EmbeddingPort) -> None:
+    async with db_session.async_session_factory() as db:
+        store = SqlPrecedentStore(db)
+        await IndexPrecedents(store, RegexVerdictReader(), embedder).embed_pending()
 
 
 @router.post("/verdicts/upload", response_model=KnowledgeUploadResponse)
 async def upload_verdicts(
     db: DbSession,
     user: AdminUser,
+    background: BackgroundTasks,
     files: list[UploadFile] = File(default_factory=list),
     source_type: str = Form("manual"),
+    embedder: EmbeddingPort = Depends(get_embedder),
 ):
     if not files:
         raise HTTPException(status_code=422, detail="Не переданы файлы")
@@ -69,6 +114,10 @@ async def upload_verdicts(
             path.unlink(missing_ok=True)
         raise
 
+    cards = await _index_cards(db, embedder, [item.verdict_id for item in items])
+    for item in items:
+        item.precedent = _precedent_read(cards.get(item.verdict_id))
+    background.add_task(_embed_precedents, embedder)
     return KnowledgeUploadResponse(uploaded=len(items), items=items)
 
 

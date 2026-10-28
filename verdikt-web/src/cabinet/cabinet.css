@@ -145,6 +145,13 @@
 .variant-title { font-size: 24px; font-weight: 650; line-height: 1.25; }
 .variant-details { color: var(--line-strong); font-size: 14px; }
 .variant-why { border-top: 1px solid var(--ink-3); padding-top: 12px; font-size: 13px; line-height: 1.43; color: var(--subtle); }
+.practice { border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.practice-headline { font-size: 16px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.practice-stats { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
+.practice-stats div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.practice-stats dt { font-size: 12px; color: var(--muted); }
+.practice-stats dd { margin: 0; font-size: 14px; font-weight: 600; }
+.practice-note { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
 .similar { border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
 .similar-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
 .similar-all { font-size: 13px; font-weight: 600; }

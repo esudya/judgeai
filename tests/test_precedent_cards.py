@@ -103,3 +103,18 @@ def test_especially_dangerous_recidivism():
 
 def test_fabula_without_marker_is_beginning():
     assert extract_fabula("  Кража телефона.  ") == "Кража телефона."
+
+
+def test_query_card_needs_some_text():
+    from src.application.precedent_cards import query_card
+
+    reader = RegexVerdictReader()
+    assert query_card(reader, []) is None
+    assert query_card(reader, ["", "  \n "]) is None
+
+
+def test_query_card_prefers_the_document_with_a_qualification():
+    from src.application.precedent_cards import query_card
+
+    card = query_card(RegexVerdictReader(), [NO_HEADINGS, PRACTICE_THEFT])
+    assert [str(e.qualification) for e in card.episodes] == ["п. «в» ч. 2 ст. 158 УК РФ"]

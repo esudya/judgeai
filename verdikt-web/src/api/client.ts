@@ -1,12 +1,13 @@
-import type { CaseAnalysis, CaseFile, CaseSummary, LegalCheck } from './types';
+import type { CaseAnalysis, CaseFile, CaseSummary, LegalCheck, PrecedentSource } from './types';
 
 type WireScale = {
   sanction_max_months: number; limit_months: number | null; limit_norm: string | null;
   practice_months: [number, number] | null; avg_similar_months: number | null;
   recommended_months: number | null; within_sanction: boolean | null; extra_notes: string[];
 };
-export type WireAnalysis = Omit<CaseAnalysis, 'scale' | 'legalChecks'> & {
+export type WireAnalysis = Omit<CaseAnalysis, 'scale' | 'legalChecks' | 'precedentSource'> & {
   schema_version: number; scale: WireScale | null; legal_checks?: LegalCheck[];
+  precedent_source?: PrecedentSource;
 };
 export interface Message {
   id: number; role: string; content: string | null;
@@ -43,6 +44,8 @@ export function mapAnalysis(a: WireAnalysis): CaseAnalysis {
   const s = a.scale;
   return { ...a, qualification: a.qualification ?? null, draft: a.draft ?? null,
     warnings: a.warnings ?? [], legalChecks: a.legal_checks ?? [],
+    precedentSource: a.precedent_source ?? null, precedents: a.precedents ?? [],
+    practice: a.practice ?? null,
     scale: s ? {sanctionMaxMonths: s.sanction_max_months, limitMonths: s.limit_months,
       limitNorm: s.limit_norm, practiceMonths: s.practice_months,
       avgSimilarMonths: s.avg_similar_months, recommendedMonths: s.recommended_months,

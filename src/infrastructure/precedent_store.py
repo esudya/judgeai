@@ -66,6 +66,18 @@ def _card(row: PrecedentCardRow) -> PrecedentCard:
     )
 
 
+def _stored(row: PrecedentCardRow) -> StoredCard:
+    return StoredCard(
+        row.id,
+        _card(row),
+        row.knowledge_verdict_id,
+        row.uid,
+        row.court_name,
+        row.decision_date,
+        row.source_url,
+    )
+
+
 class SqlPrecedentStore:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -225,15 +237,15 @@ class SqlPrecedentStore:
         if not ids:
             return {}
         rows = await self.db.scalars(select(PrecedentCardRow).where(PrecedentCardRow.id.in_(ids)))
-        return {
-            row.id: StoredCard(
-                row.id,
-                _card(row),
-                row.knowledge_verdict_id,
-                row.uid,
-                row.court_name,
-                row.decision_date,
-                row.source_url,
-            )
-            for row in rows
-        }
+        return {row.id: _stored(row) for row in rows}
+
+    async def has_cards(self) -> bool:
+        return await self.db.scalar(select(PrecedentCardRow.id).limit(1)) is not None
+
+    async def cards_for_verdicts(self, verdict_ids: list[int]) -> dict[int, StoredCard]:
+        if not verdict_ids:
+            return {}
+        rows = await self.db.scalars(
+            select(PrecedentCardRow).where(PrecedentCardRow.knowledge_verdict_id.in_(verdict_ids))
+        )
+        return {row.knowledge_verdict_id: _stored(row) for row in rows}

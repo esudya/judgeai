@@ -582,7 +582,7 @@ LLM_API_BASE=<URL OpenAI-совместимого API>
 LLM_API_KEY=<ключ>
 LLM_MODEL=<модель>
 
-EMBEDDING_MODEL=alekseevpavel04/multilingual-e5-small-ru-law
+EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 EMBEDDING_DIM=384
 EMBEDDING_CACHE_DIR=/app/.fastembed_cache
 EMBEDDING_CHUNK_SIZE=2500

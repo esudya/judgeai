@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o-mini"
     LLM_TIMEOUT_SECONDS: float = 120.0
 
-    EMBEDDING_MODEL: str = "alekseevpavel04/multilingual-e5-small-ru-law"
+    EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_DIM: int = 384
     EMBEDDING_CACHE_DIR: str = ".fastembed_cache"
     EMBEDDING_CHUNK_SIZE: int = 2500

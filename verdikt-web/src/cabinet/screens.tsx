@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react';
-import type { CaseAnalysis, CaseFile } from '../api/types';
+import type { CaseAnalysis, CaseFile, PracticeComparison } from '../api/types';
 import { FileChip, FileTile } from '../components/FileTile';
 import { Icon, IconTile, type IconName } from '../components/Icon';
 import { LogoMark } from '../components/Logo';
@@ -8,6 +8,7 @@ import { plural } from '../lib/format';
 import { fileReadingLabel, fileReadingWarning } from './fileReadingPresentation';
 import { ACCEPT } from './Composer';
 import { legalCheckSourceUrl, legalCheckStatusLabel } from './legalCheckPresentation';
+import { practiceSummary, precedentSourceNote, shareLabel } from './practicePresentation';
 
 const SUGGESTIONS: [string, string, string, IconName][] = [
   ['Подготовить проект приговора', 'Квалификация, наказание и текст', '#0066ff', 'doc'],
@@ -152,6 +153,28 @@ function Thinking({ steps }: { steps: Step[] }) {
   );
 }
 
+function Practice({ p }: { p: PracticeComparison }) {
+  const s = practiceSummary(p);
+  return (
+    <section className="practice" aria-label="Сравнение с практикой">
+      <div className="eyebrow">Сравнение с практикой</div>
+      <div className="practice-headline">{s.headline}</div>
+      {s.median && <dl className="practice-stats">
+        <div><dt>Медиана</dt><dd>{s.median}</dd></div>
+        {s.range && <div><dt>Диапазон 25–75 %</dt><dd>{s.range}</dd></div>}
+        {s.spread && <div><dt>Минимум – максимум</dt><dd>{s.spread}</dd></div>}
+        <div><dt>Условно (ст. 73)</dt><dd>{shareLabel(p.conditional_share)}</dd></div>
+        <div><dt>Ниже низшего (ст. 64)</dt><dd>{shareLabel(p.art64_share)}</dd></div>
+        {p.draft_percentile !== null && <div><dt>Перцентиль проекта</dt><dd>{Math.round(p.draft_percentile)}</dd></div>}
+      </dl>}
+      <p className="practice-note">
+        {s.basis}. Сопоставимость определена автоматически по квалификации, обстоятельствам и
+        рецидиву; веса оценки ещё не откалиброваны на размеченной выборке.
+      </p>
+    </section>
+  );
+}
+
 function Result({ a }: { a: CaseAnalysis }) {
   const [variant, setVariant] = useState(0);
   const current = a.variants[variant];
@@ -191,6 +214,7 @@ function Result({ a }: { a: CaseAnalysis }) {
         </div>
 
         {a.scale && <SentenceScale scale={a.scale} legend="plain" />}
+        {a.practice && <Practice p={a.practice} />}
 
         <div className="grid-2">
           <div className="soft-card">
@@ -229,6 +253,7 @@ function Result({ a }: { a: CaseAnalysis }) {
           <span className="variant-why">{current.rationale}</span>
         </div>}
 
+        {precedentSourceNote(a.precedentSource) && <div className="warn-box" role="note">{precedentSourceNote(a.precedentSource)}</div>}
         {a.similar.length > 0 && <div className="similar">
           <div className="similar-head">
             <span className="eyebrow">Схожие приговоры</span>
@@ -237,8 +262,8 @@ function Result({ a }: { a: CaseAnalysis }) {
               Показать все
             </a>
           </div>
-          {a.similar.map((s) => (
-            <div key={s.punishment} className="similar-row">
+          {a.similar.map((s, i) => (
+            <div key={`${i}-${s.punishment}`} className="similar-row">
               <div className="similar-text">
                 <span className="similar-title">{s.punishment}</span>
                 <span className="similar-meta">

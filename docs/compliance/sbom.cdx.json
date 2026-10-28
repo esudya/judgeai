@@ -45,7 +45,7 @@
       },
       {
         "name": "judgeai:input-sha256:docs/compliance/resources.json",
-        "value": "807cf7b2abd1a34a8ae55e289df35befb86e31b2129a3209a294c891805b12c9"
+        "value": "fbe268c3449b7131b75bf75072ad5eeefc67499c27b13f3c50d26e5e8eaf56a9"
       },
       {
         "name": "judgeai:input-sha256:docs/legal-sources.json",
@@ -53,7 +53,7 @@
       },
       {
         "name": "judgeai:input-sha256:src/config.py",
-        "value": "5a993afc74824e23a9f94d473547bd94d508fa2f7eed28b45c1e88e7d030542c"
+        "value": "23981d61a61f73f2c7f2e896d1d12e4cf141f52cba59dd8177470214985513ee"
       },
       {
         "name": "judgeai:input-sha256:Dockerfile",
@@ -314,17 +314,17 @@
     },
     {
       "type": "machine-learning-model",
-      "bom-ref": "model:alekseevpavel04/multilingual-e5-small-ru-law",
-      "name": "alekseevpavel04/multilingual-e5-small-ru-law",
+      "bom-ref": "model:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "name": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
       "licenses": [
         {
-          "expression": "MIT"
+          "expression": "Apache-2.0"
         }
       ],
       "externalReferences": [
         {
           "type": "website",
-          "url": "https://huggingface.co/alekseevpavel04/multilingual-e5-small-ru-law"
+          "url": "https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         }
       ],
       "properties": [
@@ -6978,7 +6978,7 @@
         "legal-source:vs-plenum-2016-55",
         "legal-source:vs-plenum-2022-14",
         "legal-source:vs-plenum-2025-40",
-        "model:alekseevpavel04/multilingual-e5-small-ru-law",
+        "model:sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
         "npm:node_modules/@types/node@22.20.5",
         "npm:node_modules/@types/react-dom@19.3.0",
         "npm:node_modules/@types/react@19.3.0",
