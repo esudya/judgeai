@@ -120,3 +120,28 @@ async def test_private_case_document_cannot_be_read_by_id():
         r = await client.get(f"/api/knowledge/verdicts/{private_id}")
         assert r.status_code == 404
         assert "Смирнова" not in r.text and "alice-case" not in r.text
+
+
+async def test_private_case_documents_never_reach_the_vector_search(monkeypatch):
+    """Same boundary for the vector branch: a private chunk closest to the query stays out."""
+    from src.db.models import KnowledgeChunk
+    from src.services import similarity_search
+    from tests.fixtures.fake_embedder import HashingEmbedder
+
+    embedder = HashingEmbedder()
+    monkeypatch.setattr(similarity_search, "embed_query", embedder.embed_query)
+    secret = "Секретный протокол допроса свидетеля Смирнова по делу о краже автомобиля"
+    async with async_session_factory() as db:
+        for text, source_type in ((secret, "chat"), (PRACTICE_THEFT, "manual")):
+            verdict = KnowledgeVerdict(raw_text=text, source_type=source_type)
+            db.add(verdict)
+            await db.flush()
+            [vector] = await embedder.embed_passages([text])
+            db.add(
+                KnowledgeChunk(
+                    verdict_id=verdict.id, chunk_type="text", content=text, embedding=vector
+                )
+            )
+        await db.commit()
+        found = await similarity_search.find_similar_verdicts(db=db, query_text=secret)
+    assert found and all("Секретный" not in (item["excerpt"] or "") for item in found)
