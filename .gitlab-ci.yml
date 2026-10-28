@@ -33,7 +33,7 @@ api-tests:
     LLM_PROVIDER: fake
     DB_NULL_POOL: 'true'
   script:
-    - pip install '.[dev]'
+    - pip install '.[dev]' ./packages/legal_core
     - pytest --cov=src
     - cd packages/legal_core && pytest && cd ../..
     - ruff check src tests packages/legal_core tests_browser
@@ -61,7 +61,7 @@ browser-auth:
     - apt-get update -qq && apt-get install -y -qq python3-venv
     - python3 -m venv /tmp/acceptance-python
     - . /tmp/acceptance-python/bin/activate
-    - pip install '.[dev]' 'playwright==1.64.1'
+    - pip install '.[dev]' ./packages/legal_core 'playwright==1.64.1'
     - playwright install --with-deps chromium
     - cd verdikt-web && npm ci && npm test && npm run build && cd ..
     - python tests_browser/auth_smoke.py
