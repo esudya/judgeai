@@ -124,3 +124,4 @@ class KnowledgeChunk(Base):
 from src.db.auth import LoginBucket, User, UserSession  # noqa: E402,F401
 from src.db.criminal_sanctions import CriminalArticleSanction  # noqa: E402,F401
 from src.db.legal_library import LegalAct, LegalEdition, LegalProvision, LegalRuleReference  # noqa: E402,F401
+from src.db.llm_window_extractions import LlmWindowExtraction  # noqa: E402,F401

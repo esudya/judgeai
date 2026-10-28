@@ -19,13 +19,15 @@ from src.db.auth import User
 from src.db.models import Chat, Message
 from src.services.analysis_access import is_pending_reply
 from src.services.auth import UserContext
-from src.services.case_analyzer import assemble_analysis, extract_facts
+from src.services.case_analyzer import DOCUMENT_CHARS_LIMIT, assemble_analysis, extract_facts
 from src.services.criminal_sanction_lookup import find_article_sanctions
 from src.services.document_parser import extract_document
 from src.services.knowledge_service import create_knowledge_verdict_from_text
 from src.services.llm_client import LLMError, get_llm_client
+from src.services.punishment_window_resolver import resolve_windows
 from src.services.qualification_reference import parse_qualification_reference
 from src.services.similarity_search import find_similar_verdicts
+from src.services.verdict_structure import read_verdict_structure
 
 logger = logging.getLogger(__name__)
 
@@ -124,18 +126,33 @@ async def run_analysis(
                 )
 
         await _set_stage(assistant_message_id, stage="qualifying")
-        facts = await extract_facts(get_llm_client(), question, texts, similar_items)
+        llm = get_llm_client()
+        structure = read_verdict_structure(texts, DOCUMENT_CHARS_LIMIT)
+        facts = await extract_facts(llm, question, structure.model_texts, similar_items)
+        sentence = structure.sentence
+        if structure.ambiguous_windows and settings.LLM_PROVIDER != "fake":
+            async with db_session.async_session_factory() as db:
+                resolved = await resolve_windows(db, llm, structure.ambiguous_windows)
+            sentence = structure.with_resolved_windows(resolved)
 
         await _set_stage(assistant_message_id, stage="checking")
         statute = None
         reference = parse_qualification_reference(
             facts.qualification.article if facts.qualification else None
         )
-        if reference is not None:
-            async with db_session.async_session_factory() as db:
+        count_references = {c.reference for c in sentence.counts if c.reference is not None}
+        count_statutes = {}
+        async with db_session.async_session_factory() as db:
+            if reference is not None:
                 statute = await find_article_sanctions(db, reference.article, reference.part)
-            if statute is None:
-                warnings.append(f"Санкция {reference} не найдена в импортированном тексте УК РФ.")
+            for count_reference in count_references:
+                reading = await find_article_sanctions(
+                    db, count_reference.article, count_reference.part
+                )
+                if reading is not None:
+                    count_statutes[count_reference] = reading
+        if reference is not None and statute is None:
+            warnings.append(f"Санкция {reference} не найдена в импортированном тексте УК РФ.")
         analysis = assemble_analysis(
             facts,
             prompt=question or "",
@@ -146,6 +163,9 @@ async def run_analysis(
             extra_warnings=warnings,
             document_texts=texts,
             statute=statute,
+            sentence=sentence,
+            count_statutes=count_statutes,
+            model_texts=structure.model_texts,
         )
 
         async with db_session.async_session_factory() as db:
