@@ -150,10 +150,12 @@ deploy:
         exit 1
       fi
     - eval "$(ssh-agent -s)"
-    - chmod 600 "${SSH_PRIVATE_KEY}"
-    - ssh-add "${SSH_PRIVATE_KEY}"
     - mkdir -p "${HOME}/.ssh" && chmod 700 "${HOME}/.ssh"
-    - cp "${SSH_KNOWN_HOSTS}" "${HOME}/.ssh/known_hosts"
+    # A pasted File variable often loses its final newline or carries CRLF, and OpenSSH then
+    # rejects the key ("error in libcrypto"); normalize both before use.
+    - (umask 077 && { tr -d '\r' < "${SSH_PRIVATE_KEY}"; echo; } > "${HOME}/.ssh/deploy_key")
+    - ssh-add "${HOME}/.ssh/deploy_key"
+    - tr -d '\r' < "${SSH_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
     - chmod 600 "${HOME}/.ssh/known_hosts"
     - printf 'API_IMAGE=%s/api:%s\nWEB_IMAGE=%s/web:%s\n' "${CI_REGISTRY_IMAGE}" "${CI_COMMIT_SHORT_SHA}" "${CI_REGISTRY_IMAGE}" "${CI_COMMIT_SHORT_SHA}" > deploy.env
     - scp -q deploy/docker-compose.prod.yml deploy/Caddyfile deploy.env "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_DIR}/"
