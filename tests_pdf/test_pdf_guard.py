@@ -3,6 +3,7 @@ import io
 import re
 import unittest
 from dataclasses import replace
+from unittest.mock import patch
 
 from src.application.upload_validation import ValidateUpload
 from src.domain.uploads import DocxLimits, PdfLimits, UploadRejected
@@ -36,6 +37,12 @@ class PdfGuardTests(unittest.TestCase):
             with self.subTest(content=content[:12]), self.assertRaises(UploadRejected) as error:
                 self.inspect(content)
             self.assertEqual(error.exception.code, "pdf_invalid")
+
+    def test_parser_compatibility_without_removed_tell_method(self):
+        from pdfminer.pdfparser import PDFParser
+
+        with patch.object(PDFParser, "tell", None, create=True):
+            self.assertEqual(self.inspect(pdf()).pages, 1)
 
     def test_stream_length_cannot_hide_ignored_bytes(self):
         for declared in (0, 1, 5, 8):

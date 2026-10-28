@@ -41,7 +41,7 @@ def inspect_pdf(source: BinaryIO, limits: PdfLimits) -> PdfInspection:
             if token is self.KEYWORD_STREAM:
                 start, value = self.curstack[-1]
                 raw_size = len(value.rawdata)
-                boundary = self.tell()
+                boundary = self.bufpos + self.charpos
                 gap = boundary - start - raw_size
                 if gap not in (0, 1, 2):
                     raise reject_pdf("pdf_invalid")
