@@ -80,6 +80,10 @@ class PrecedentStore(Protocol):
 
     async def load(self, ids: list[int]) -> dict[int, StoredCard]: ...
 
+    async def cards_for_verdicts(self, verdict_ids: list[int]) -> dict[int, StoredCard]: ...
+
+    async def has_cards(self) -> bool: ...
+
 
 @dataclass(frozen=True)
 class IndexReport:
@@ -89,12 +93,26 @@ class IndexReport:
     vector_error: str | None = None
 
 
+@dataclass(frozen=True)
+class CardsReport:
+    cards: int
+    duplicates: int
+
+
+@dataclass(frozen=True)
+class VectorsReport:
+    vectors: int
+    error: str | None = None
+
+
 class IndexPrecedents:
+    """Cards are cheap (regex) and built first; vectors need a model and may fail on their own."""
+
     def __init__(self, store: PrecedentStore, reader: VerdictReader, embedder: EmbeddingPort):
         self.store, self.reader, self.embedder = store, reader, embedder
 
-    async def execute(self, extractor_version: str, batch: int = 32) -> IndexReport:
-        cards = duplicates = vectors = 0
+    async def build_cards(self, extractor_version: str) -> CardsReport:
+        cards = duplicates = 0
         for source in await self.store.pending_verdicts(extractor_version):
             extraction = build_card(self.reader, source.text)
             if await self.store.is_duplicate(extraction.text_hash, source.uid):
