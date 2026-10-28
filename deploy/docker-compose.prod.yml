@@ -1,0 +1,104 @@
+# Production stack for esudya.ru. Images come from the GitLab container registry;
+# the CI deploy job writes the exact digests into deploy.env next to this file.
+# Runtime secrets live in ./.env (created once on the server, never committed).
+#
+# Usage on the server:
+#   docker compose --env-file deploy.env -f docker-compose.prod.yml pull
+#   docker compose --env-file deploy.env -f docker-compose.prod.yml up -d
+#
+# db and api publish no ports: Docker's published-port rules bypass ufw, and
+# nothing but the Caddy proxy needs to reach them (via the compose network).
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: judgeai_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  web:
+    image: ${WEB_IMAGE:-registry.gitlab.com/judgeai/judgeai/web:latest}
+    container_name: judgeai_web
+    depends_on:
+      - api
+    restart: unless-stopped
+    logging: *logging
+
+  migrate:
+    image: ${API_IMAGE:-registry.gitlab.com/judgeai/judgeai/api:latest}
+    container_name: judgeai_migrate
+    command: ["alembic", "upgrade", "head"]
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+  api:
+    image: ${API_IMAGE:-registry.gitlab.com/judgeai/judgeai/api:latest}
+    container_name: judgeai_api
+    env_file:
+      - .env
+    environment:
+      EMBEDDING_CACHE_DIR: /app/.fastembed_cache
+    volumes:
+      - uploads:/app/uploads
+      - model_cache:/app/.fastembed_cache
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    logging: *logging
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: judgeai_db
+    env_file:
+      - .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  caddy_data:
+  caddy_config:
+  uploads:
+  model_cache:
+  pgdata:

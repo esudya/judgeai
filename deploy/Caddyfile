@@ -1,0 +1,25 @@
+# Replace admin@esudya.ru with a real mailbox before the first deploy:
+# Let's Encrypt sends certificate expiry notices there.
+{
+	email admin@esudya.ru
+}
+
+esudya.ru {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /health {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+www.esudya.ru {
+	redir https://esudya.ru{uri} permanent
+}

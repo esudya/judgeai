@@ -9,7 +9,11 @@ include:
     inputs:
       allow_failure: true
 
-# Source inventory checks only; API and database verification remain separate.
+# test -> build -> deploy on the default branch; MRs run tests only.
+# Deploy expects SSH_PRIVATE_KEY (File), SSH_KNOWN_HOSTS (File), DEPLOY_HOST,
+# DEPLOY_USER in CI/CD variables; see docs/DEPLOY.md.
+stages: [test, build, deploy]
+
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -81,3 +85,77 @@ browser-auth:
     expire_in: 7 days
     paths:
       - acceptance-screenshots/*.png
+
+# ---- build images (default branch only) ----
+build-api:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  timeout: 30m
+  interruptible: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}/api:${CI_COMMIT_SHORT_SHA}"
+      --destination "${CI_REGISTRY_IMAGE}/api:latest"
+      --cache=true
+      --cache-repo "${CI_REGISTRY_IMAGE}/api/cache"
+
+build-web:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  timeout: 20m
+  interruptible: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"username\":\"${CI_REGISTRY_USER}\",\"password\":\"${CI_REGISTRY_PASSWORD}\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}/verdikt-web"
+      --dockerfile "${CI_PROJECT_DIR}/verdikt-web/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}/web:${CI_COMMIT_SHORT_SHA}"
+      --destination "${CI_REGISTRY_IMAGE}/web:latest"
+      --cache=true
+      --cache-repo "${CI_REGISTRY_IMAGE}/web/cache"
+
+# ---- deploy to production over SSH (default branch only) ----
+deploy:
+  stage: deploy
+  image: alpine:3.20
+  timeout: 15m
+  resource_group: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  environment:
+    name: production
+    url: https://esudya.ru
+  variables:
+    DEPLOY_DIR: /opt/judgeai
+  script:
+    - apk add --no-cache openssh-client curl
+    - eval "$(ssh-agent -s)"
+    - chmod 600 "${SSH_PRIVATE_KEY}"
+    - ssh-add "${SSH_PRIVATE_KEY}"
+    - mkdir -p "${HOME}/.ssh" && chmod 700 "${HOME}/.ssh"
+    - cp "${SSH_KNOWN_HOSTS}" "${HOME}/.ssh/known_hosts"
+    - chmod 600 "${HOME}/.ssh/known_hosts"
+    - printf 'API_IMAGE=%s/api:%s\nWEB_IMAGE=%s/web:%s\n' "${CI_REGISTRY_IMAGE}" "${CI_COMMIT_SHORT_SHA}" "${CI_REGISTRY_IMAGE}" "${CI_COMMIT_SHORT_SHA}" > deploy.env
+    - scp -q deploy/docker-compose.prod.yml deploy/Caddyfile deploy.env "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_DIR}/"
+    - ssh "${DEPLOY_USER}@${DEPLOY_HOST}" "cd ${DEPLOY_DIR} && docker compose --env-file deploy.env -f docker-compose.prod.yml pull --quiet && docker compose --env-file deploy.env -f docker-compose.prod.yml up -d --remove-orphans"
+    - |
+      i=0
+      until curl -fsS "https://esudya.ru/health" >/dev/null 2>&1; do
+        i=$((i+1))
+        if [ "$i" -ge 60 ]; then echo "Health check failed after 10 minutes"; exit 1; fi
+        sleep 10
+      done
+      echo "Health check passed: https://esudya.ru/health"
