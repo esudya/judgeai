@@ -23,7 +23,15 @@ _CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types}"
 _REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships}"
 _WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _OFFICE_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
-_MAIN_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+_MAIN_TYPES = {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml",
+}
+_WORD_NAMESPACES = {_WORD_NS, "http://purl.oclc.org/ooxml/wordprocessingml/main}"}
+_OFFICE_RELS = {
+    _OFFICE_REL,
+    "http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument",
+}
 
 
 def invalid() -> UploadRejected:
@@ -97,7 +105,7 @@ class _XmlReader:
         require_budget(self.element_counter[0], self.limits.max_xml_elements)
         if self.depth == 1:
             self.facts.root = name
-        if self.depth == 2 and name == _WORD_NS + "body":
+        if self.depth == 2 and name in {namespace + "body" for namespace in _WORD_NAMESPACES}:
             self.facts.body = True
         if name in {_CT_NS + "Override", _CT_NS + "Default"}:
             content_type = attrs.get("ContentType", "")
@@ -114,7 +122,7 @@ class _XmlReader:
                 if self.facts.main_type is not None:
                     raise invalid()
                 self.facts.main_type = content_type
-        if name == _REL_NS + "Relationship" and attrs.get("Type") == _OFFICE_REL:
+        if name == _REL_NS + "Relationship" and attrs.get("Type") in _OFFICE_RELS:
             self.facts.office_targets.append((attrs.get("Target", ""), attrs.get("TargetMode")))
 
     def end(self, name):
@@ -223,14 +231,14 @@ class DocxInspector:
         if (
             content_types is None
             or content_types.root != _CT_NS + "Types"
-            or content_types.main_type != _MAIN_TYPE
+            or content_types.main_type not in _MAIN_TYPES
             or relationships is None
             or relationships.root != _REL_NS + "Relationships"
             or len(relationships.office_targets) != 1
             or relationships.office_targets[0][0] not in {"word/document.xml", "/word/document.xml"}
             or relationships.office_targets[0][1] not in {None, "Internal"}
             or main is None
-            or main.root != _WORD_NS + "document"
+            or main.root not in {namespace + "document" for namespace in _WORD_NAMESPACES}
             or not main.body
         ):
             raise invalid()

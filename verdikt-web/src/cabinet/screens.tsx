@@ -5,6 +5,7 @@ import { Icon, IconTile, type IconName } from '../components/Icon';
 import { LogoMark } from '../components/Logo';
 import { SentenceScale } from '../components/SentenceScale';
 import { plural } from '../lib/format';
+import { fileReadingLabel, fileReadingWarning } from './fileReadingPresentation';
 import { ACCEPT } from './Composer';
 import { legalCheckSourceUrl, legalCheckStatusLabel } from './legalCheckPresentation';
 
@@ -45,7 +46,7 @@ export function NewCaseScreen({ onFiles }: { onFiles: (list: FileList | null) =>
           <Icon name="upload" size={26} strokeWidth={1.6} />
         </span>
         <span style={{ fontWeight: 600 }}>Перетащите материалы дела или выберите файлы</span>
-        <span className="muted-14">PDF, DOCX, TXT, MD · 50 MB per file</span>
+        <span className="muted-14">PDF, DOCX, DOTX, TXT, MD · 50 MB per file</span>
       </button>
       <input ref={input} type="file" multiple accept={ACCEPT} hidden onChange={(e) => onFiles(e.target.files)} />
       <div className="sug-grid">
@@ -63,14 +64,10 @@ export function NewCaseScreen({ onFiles }: { onFiles: (list: FileList | null) =>
   );
 }
 
-function fileMeta(f: CaseFile): string {
-  if (!f.pages) return 'загружен · ожидает анализа';
-  return `${f.pages} стр. · ${f.recognition === 'partial' ? 'распознано частично' : 'распознано'}`;
-}
 
 export function AttachScreen({ files, onRemove }: { files: CaseFile[]; onRemove: (name: string) => void }) {
   const pages = files.reduce((s, f) => s + f.pages, 0);
-  const partial = files.filter((f) => f.recognition === 'partial');
+  const limited = files.filter((f) => fileReadingWarning(f.recognition));
   return (
     <div className="fade-in screen-attach">
       <div className="attach-head">
@@ -85,7 +82,7 @@ export function AttachScreen({ files, onRemove }: { files: CaseFile[]; onRemove:
             <FileTile ext={f.ext} size={40} />
             <div className="file-text">
               <span className="file-name">{f.name}</span>
-              <span className={`file-meta ${f.recognition === 'partial' ? 'warn' : ''}`}>{fileMeta(f)}</span>
+              <span className={`file-meta ${fileReadingWarning(f.recognition) ? 'warn' : ''}`}>{fileReadingLabel(f)}</span>
             </div>
             <button type="button" aria-label={`Удалить файл ${f.name}`} className="btn btn-soft btn-icon" onClick={() => onRemove(f.name)}>
               <Icon name="close" size={16} strokeWidth={2} />
@@ -93,11 +90,11 @@ export function AttachScreen({ files, onRemove }: { files: CaseFile[]; onRemove:
           </li>
         ))}
       </ul>
-      {partial.map((f) => (
+      {limited.map((f) => (
         <div key={f.name} className="warn-box" role="note">
           <Icon name="warning" size={18} strokeWidth={2} color="#b54708" />
           <span>
-            <strong>{f.name}</strong> распознана частично. Анализ возможен, но факт возмещения ущерба лучше подтвердить более чётким сканом.
+            <strong>{f.name}</strong> {fileReadingWarning(f.recognition)}
           </span>
         </div>
       ))}
@@ -118,8 +115,11 @@ export function ThreadScreen({ analysis, files, thinking, steps, prompt }: { pro
         <div className="bubble">
           <span>{analysis?.prompt || prompt}</span>
           <div className="chips">
-            {files.slice(0, 3).map((f) => (
-              <FileChip key={f.name} name={f.name} ext={f.ext} />
+            {files.map((f) => (
+              <div key={f.name}>
+                <FileChip name={f.name} ext={f.ext} />
+                <div className="file-meta">{fileReadingLabel(thinking ? {...f, recognition: 'pending'} : f)}</div>
+              </div>
             ))}
           </div>
         </div>

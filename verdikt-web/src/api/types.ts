@@ -22,8 +22,8 @@ export interface CaseFile {
   name: string;
   ext: FileExt;
   pages: number;
-  /** "partial" = OCR could not read everything; the UI shows a warning. */
-  recognition: 'ok' | 'partial' | 'empty' | 'error' | 'unsupported';
+  /** "partial" = some document content could not be read; OCR is not implied. */
+  recognition: 'pending' | 'ok' | 'partial' | 'empty' | 'error' | 'unsupported';
 }
 
 /** All terms are in months; the scale is drawn from 0 to sanctionMaxMonths. */

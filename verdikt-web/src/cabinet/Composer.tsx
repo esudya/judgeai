@@ -14,7 +14,7 @@ interface Props {
   onStop: () => void;
 }
 
-export const ACCEPT = '.pdf,.docx,.txt,.md';
+export const ACCEPT = '.pdf,.docx,.dotx,.txt,.md';
 
 export function Composer({ mode, files, value, onChange, onFiles, onSend, onStop }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);

@@ -84,7 +84,7 @@ export function Cabinet({route, onNavigate, user: account, onSignOut}: Props) {
   const attachments: CaseFile[] = (user?.attachments ?? []).map(a => ({
     name:a.filename, ext:fileExt(a.filename), pages:a.page_count ?? 0, recognition:a.extraction_status,
   }));
-  const pendingFiles: CaseFile[] = selectedFiles.map(f => ({name:f.name, ext:fileExt(f.name), pages:0, recognition:'ok'}));
+  const pendingFiles: CaseFile[] = selectedFiles.map(f => ({name:f.name, ext:fileExt(f.name), pages:0, recognition:'pending'}));
   const active = cases.find(c => c.id === caseId);
   const stage = assistant?.stage ? STAGES.indexOf(assistant.stage) : -1;
   const steps = LABELS.map((label, i) => ({label, done: stage > i, active: stage === i}));
@@ -146,7 +146,7 @@ export function Cabinet({route, onNavigate, user: account, onSignOut}: Props) {
           {loading && <p role="status">Loading case…</p>}
           {view === 'settings' ? <SettingsScreen onCancel={() => go('/app')} /> : caseId ? (
             <>
-              {busy || analysis ? <ThreadScreen prompt={user?.content || 'Uploaded documents'} analysis={analysis} files={attachments} thinking={busy} steps={steps} /> :
+              {busy || analysis || attachments.length > 0 ? <ThreadScreen prompt={user?.content || 'Uploaded documents'} analysis={analysis} files={attachments} thinking={busy} steps={steps} /> :
                 !loading && !error && <p>No analysis yet. Add a request or upload a verdict.</p>}
               {selectedFiles.length > 0 && <AttachScreen files={pendingFiles} onRemove={name => setSelectedFiles(p => p.filter(f => f.name !== name))} />}
             </>

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: str = "uploads"
     UPLOAD_MAX_MB: int = 50
-    UPLOAD_ALLOWED_EXTENSIONS: str = ".pdf,.docx,.txt,.md"
+    UPLOAD_ALLOWED_EXTENSIONS: str = ".pdf,.docx,.dotx,.txt,.md"
 
     # "openai" = any OpenAI-compatible /chat/completions endpoint; "deepseek_web" = local
     # DeepSeek web proxy (dev only); "fake" = deterministic local stub for development and
