@@ -653,6 +653,7 @@ tail -1000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 | Симптом | Причина | Действие |
 |---|---|---|
 | `deploy` красная на `scp`/`ssh`: Permission denied | CI-ключ не в `authorized_keys`, неверные `DEPLOY_HOST/USER`, `SSH_KNOWN_HOSTS` снят до смены IP | Проверить B.7; человек перечитывает C.1/C.2 (keyscan после стабилизации DNS) |
+| `deploy` красная: `must be CI/CD variables of type File` | `SSH_PRIVATE_KEY`/`SSH_KNOWN_HOSTS` заведены типом Variable (или не заданы) | Пересоздать типом **File**. Если ключ хоть раз попал в лог job — считать скомпрометированным: убрать из `authorized_keys`, стереть лог (Erase job log), выпустить новую пару (B.7) |
 | `deploy` красная на `pull`: unauthorized | deploy token истёк/отозван | Человек создаёт новый (A.5), агент повторяет B.6 |
 | `migrate` падает | Ошибка миграции/БД | `docker logs judgeai_migrate`; сообщить человеку; откат 5.4 не выполняет миграции назад |
 | Caddy: `acme` ошибки, сайт по HTTP без сертификата | DNS не на этот сервер, порты 80/443 закрыты | B.1, `sudo ufw status`; дождаться DNS |

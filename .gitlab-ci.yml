@@ -142,6 +142,13 @@ deploy:
     DEPLOY_DIR: /opt/judgeai
   script:
     - apk add --no-cache openssh-client curl
+    # Both secrets must be File-type variables (a path). A Variable-type secret holds the key
+    # itself, and passing it to chmod/cp prints it into the job log; stop without echoing it.
+    - |
+      if [ ! -f "${SSH_PRIVATE_KEY:-}" ] || [ ! -f "${SSH_KNOWN_HOSTS:-}" ]; then
+        echo "SSH_PRIVATE_KEY and SSH_KNOWN_HOSTS must be CI/CD variables of type File (docs/DEPLOY.md)"
+        exit 1
+      fi
     - eval "$(ssh-agent -s)"
     - chmod 600 "${SSH_PRIVATE_KEY}"
     - ssh-add "${SSH_PRIVATE_KEY}"
