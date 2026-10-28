@@ -15,7 +15,10 @@ from sqlalchemy.orm import selectinload
 
 from src.config import settings
 from src.db import session as db_session
+from src.db.auth import User
 from src.db.models import Chat, Message
+from src.services.analysis_access import is_pending_reply
+from src.services.auth import UserContext
 from src.services.case_analyzer import assemble_analysis, extract_facts
 from src.services.criminal_sanction_lookup import find_article_sanctions
 from src.services.document_parser import extract_document
@@ -41,12 +44,42 @@ async def run_analysis(
     user_message_id: int,
     assistant_message_id: int,
     *,
+    user: UserContext,
     save_to_knowledge_base: bool = False,
     use_knowledge_base: bool = True,
 ) -> None:
+    # Validate before any status mutation, document read or external model call.
+    async with db_session.async_session_factory() as db:
+        account = await db.get(User, user.user_id)
+        request = await db.get(Message, user_message_id)
+        result = await db.get(Message, assistant_message_id)
+        chat = await db.get(Chat, request.chat_id) if request else None
+        if (
+            account is None
+            or not account.is_active
+            or chat is None
+            or chat.owner_id != user.user_id
+            or result is None
+            or not is_pending_reply(request, result)
+            or ((use_knowledge_base or save_to_knowledge_base) and not account.is_admin)
+        ):
+            logger.warning("rejected unauthorized analysis job")
+            return
+        claimed = await db.scalar(
+            update(Message)
+            .where(
+                Message.id == assistant_message_id,
+                Message.request_message_id == user_message_id,
+                Message.status == "pending",
+            )
+            .values(status="running", stage="reading")
+            .returning(Message.id)
+        )
+        await db.commit()
+        if claimed is None:
+            return
     started = time.monotonic()
     try:
-        await _set_stage(assistant_message_id, stage="reading")
         async with db_session.async_session_factory() as db:
             user_message = await db.scalar(
                 select(Message)

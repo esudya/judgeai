@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, fileExt, mapAnalysis, type Message } from '../api/client';
+import { api, fileExt, mapAnalysis, type Message, type AuthUser } from '../api/client';
 import type { CaseAnalysis, CaseFile, CaseSummary } from '../api/types';
 import { Icon } from '../components/Icon';
 import { Composer } from './Composer';
@@ -19,11 +19,11 @@ export function parseCabinetPath(path: string): CabinetRoute {
   return {view: parts[0] === 'settings' ? 'settings' : parts[0] === 'attach' ? 'attach' : 'new', caseId:''};
 }
 
-interface Props { route: CabinetRoute; onNavigate: (to: string, replace?: boolean) => void }
+interface Props { route: CabinetRoute; onNavigate: (to: string, replace?: boolean) => void; user: AuthUser; onSignOut: () => Promise<void> }
 const STAGES = ['reading', 'searching', 'qualifying', 'checking'];
 const LABELS = ['Reading documents', 'Searching precedents', 'Extracting facts', 'Checking legal rules'];
 
-export function Cabinet({route, onNavigate}: Props) {
+export function Cabinet({route, onNavigate, user: account, onSignOut}: Props) {
   const {view, caseId} = route;
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -127,7 +127,7 @@ export function Cabinet({route, onNavigate}: Props) {
       <Sidebar cases={cases} activeId={caseId || null} thinking={busy} settingsActive={view === 'settings'}
         open={sidebarOpen} onClose={() => setSidebarOpen(false)} onNew={startNew}
         onPick={c => { setSelectedFiles([]); setPrompt(''); go(`/app/case/${c.id}/result`); }}
-        onSettings={() => go('/app/settings')} />
+        onSettings={() => go('/app/settings')} username={account.username} />
       <main className="cab-main">
         <header className="cab-header">
           <div className="cab-header-title">
@@ -137,6 +137,7 @@ export function Cabinet({route, onNavigate}: Props) {
             {busy && <span className="badge"><span className="spin" />Analysing</span>}
             {analysis && !busy && <span className="badge">Analysis ready</span>}
           </div>
+          <button type="button" className="btn btn-line btn-sm" onClick={() => { void onSignOut().catch(() => setError("Cannot sign out. Try again.")); }}>Sign out</button>
           {analysis && <button type="button" className="btn btn-line btn-sm hide-sm" disabled title="DOCX export is not implemented">DOCX export · coming soon</button>}
         </header>
         <div className="cab-scroll">
@@ -153,7 +154,7 @@ export function Cabinet({route, onNavigate}: Props) {
         </div>
         {view !== 'settings' && <>
           {caseId && !busy && <p className="cab-request-note">A new request uses only its own attachments. Attach previous documents again to include them.</p>}
-          <label className="cab-knowledge"><input type="checkbox" checked={useKnowledge} disabled={busy} onChange={e => setUseKnowledge(e.target.checked)} />Search shared precedent library</label>
+          {account.is_admin && <label className="cab-knowledge"><input type="checkbox" checked={useKnowledge} disabled={busy} onChange={e => setUseKnowledge(e.target.checked)} />Search shared precedent library</label>}
           <Composer mode={busy ? 'thinking' : selectedFiles.length ? 'attach' : 'idle'} files={pendingFiles}
             value={prompt} onChange={setPrompt} onFiles={addFiles} onSend={() => void send()}
             onStop={() => go('/app')} />

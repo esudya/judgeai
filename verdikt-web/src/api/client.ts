@@ -17,8 +17,21 @@ export interface Message {
 }
 interface Chat { id: number; title: string | null; status: CaseSummary['status']; updated_at: string }
 
+export interface AuthUser { id: number; username: string; is_admin: boolean; csrf_token: string }
+let csrfToken = '';
+export class AuthenticationError extends Error {}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init);
+  const headers = new Headers(init?.headers);
+  if (csrfToken && init?.method && !['GET', 'HEAD'].includes(init.method)) {
+    headers.set('X-CSRF-Token', csrfToken);
+  }
+  const response = await fetch(`/api${path}`, {...init, headers, credentials: 'same-origin'});
+  if (response.status === 401) {
+    csrfToken = '';
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('judgeai:unauthorized'));
+    throw new AuthenticationError('Authentication required');
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     throw new Error(typeof body?.detail === 'string' ? body.detail : `Request failed (${response.status})`);
@@ -60,5 +73,31 @@ export const api = {
     body.set('use_knowledge_base', String(useKnowledge));
     for (const file of files) body.append('files', file);
     return request(`/chats/${encodeURIComponent(id)}/messages`, {method:'POST', body});
+  },
+};
+
+
+export const auth = {
+  async me(): Promise<AuthUser> {
+    const user = await request<AuthUser>('/auth/me');
+    csrfToken = user.csrf_token;
+    return user;
+  },
+  async login(username: string, password: string): Promise<AuthUser> {
+    csrfToken = '';
+    try {
+      const user = await request<AuthUser>('/auth/login', {method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Requested-With': 'JudgeAI'},
+        body: JSON.stringify({username, password})});
+      csrfToken = user.csrf_token;
+      return user;
+    } catch (error) {
+      if (error instanceof AuthenticationError) throw new Error('Invalid username or password');
+      throw error;
+    }
+  },
+  async logout(): Promise<void> {
+    await request('/auth/logout', {method: 'POST'});
+    csrfToken = '';
   },
 };

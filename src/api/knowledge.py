@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from sqlalchemy import func, or_, select
 
-from src.api.deps import DbSession
+from src.api.deps import AdminUser, DbSession
 from src.db.models import KnowledgeChunk, KnowledgeVerdict
 from src.schemas.knowledge import (
     KnowledgeListResponse,
@@ -20,6 +20,7 @@ router = APIRouter()
 @router.post("/verdicts/upload", response_model=KnowledgeUploadResponse)
 async def upload_verdicts(
     db: DbSession,
+    user: AdminUser,
     files: list[UploadFile] = File(default_factory=list),
     source_type: str = Form("manual"),
 ):
@@ -60,6 +61,7 @@ async def upload_verdicts(
 @router.get("/verdicts", response_model=KnowledgeListResponse)
 async def list_verdicts(
     db: DbSession,
+    user: AdminUser,
     page: int = 1,
     size: int = 20,
     q: str | None = None,
@@ -95,7 +97,7 @@ async def list_verdicts(
 
 
 @router.get("/verdicts/{verdict_id}", response_model=KnowledgeVerdictDetail)
-async def get_verdict(verdict_id: int, db: DbSession):
+async def get_verdict(verdict_id: int, db: DbSession, user: AdminUser):
     verdict = await db.get(KnowledgeVerdict, verdict_id)
 
     if not verdict:
@@ -122,7 +124,7 @@ async def get_verdict(verdict_id: int, db: DbSession):
 
 
 @router.delete("/verdicts/{verdict_id}")
-async def delete_verdict(verdict_id: int, db: DbSession):
+async def delete_verdict(verdict_id: int, db: DbSession, user: AdminUser):
     verdict = await db.get(KnowledgeVerdict, verdict_id)
 
     if not verdict:
