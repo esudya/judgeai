@@ -111,3 +111,35 @@ async def test_knowledge_base_off_means_no_precedent_search(client, embedder):
     result = await _analyse(client, use_knowledge_base=False)
     assert result["precedent_source"] is None and result["precedents"] == []
     assert embedder.calls == calls
+
+
+async def test_no_cards_but_text_search_finds_verdicts(client, monkeypatch):
+    found = [{"verdict_id": 7, "case_number": "1-1/2026", "court_name": "Суд", "excerpt": "кража"}]
+
+    async def fake_search(**_kwargs):
+        return found
+
+    monkeypatch.setattr("src.services.analysis_runner.find_similar_verdicts", fake_search)
+    result = await _analyse(client)
+    assert result["precedent_source"] == "text"
+    assert result["practice"] is None and result["precedents"] == []
+    assert [s["verdict_id"] for s in result["similar"]] == [7]
+
+
+async def test_question_without_documents_uses_text_search(client, monkeypatch):
+    await _practice(PRACTICE_THEFT)  # cards exist, but there is no draft to read a card from
+    asked = []
+
+    async def fake_search(**kwargs):
+        asked.append(kwargs["query_text"])
+        return []
+
+    monkeypatch.setattr("src.services.analysis_runner.find_similar_verdicts", fake_search)
+    chat_id = (await client.post("/api/chats", json={"title": None})).json()["id"]
+    r = await client.post(
+        f"/api/chats/{chat_id}/messages",
+        data={"content": "Кража ноутбука", "use_knowledge_base": "true"},
+    )
+    msg_id = r.json()["assistant_message"]["id"]
+    result = (await client.get(f"/api/chats/{chat_id}/messages/{msg_id}")).json()["result"]
+    assert asked == ["Кража ноутбука"] and result["precedent_source"] == "none"
