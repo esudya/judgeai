@@ -98,11 +98,18 @@ async def test_invalid_llm_output_is_retried_then_failed(client, monkeypatch):
     assert msg["status"] == "failed" and "схеме" in msg["error"]
 
 
-async def test_extraction_status_is_reported(client):
+async def test_extraction_status_is_reported(client, monkeypatch):
+    from src.services.document_parser import ExtractedDocument
+    from tests_pdf.fixtures import pdf
+
+    async def failed_extraction(path):
+        return ExtractedDocument("", None, "error")
+
+    monkeypatch.setattr("src.services.analysis_runner.extract_document", failed_extraction)
     chat_id = await _new_chat(client)
     r = await client.post(
         f"/api/chats/{chat_id}/messages",
-        files=[("files", ("Протокол.pdf", b"broken", "application/pdf"))],
+        files=[("files", ("Протокол.pdf", pdf(), "application/pdf"))],
     )
     msgs = (await client.get(f"/api/chats/{chat_id}/messages")).json()
     att = msgs[0]["attachments"][0]

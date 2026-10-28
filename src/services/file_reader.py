@@ -6,8 +6,9 @@ from fastapi import HTTPException, UploadFile
 
 from src.application.upload_validation import ValidateUpload
 from src.config import settings
-from src.domain.uploads import DocxLimits, UploadRejected
+from src.domain.uploads import DocxLimits, PdfLimits, UploadRejected
 from src.infrastructure.docx_inspector import DocxInspector
+from src.infrastructure.pdf_process import PdfProcessInspector
 
 _CHUNK = 1024 * 1024
 
@@ -23,12 +24,15 @@ def validate_extension(filename: str | None) -> str:
     return suffix
 
 
-def _validate_stored_docx(path: Path) -> None:
+def _validate_stored_document(path: Path) -> None:
     validator = ValidateUpload(
-        DocxInspector(), DocxLimits(max_compressed_bytes=settings.UPLOAD_MAX_MB * 1024 * 1024)
+        DocxInspector(),
+        DocxLimits(max_compressed_bytes=settings.UPLOAD_MAX_MB * 1024 * 1024),
+        pdf_inspector=PdfProcessInspector(),
+        pdf_limits=PdfLimits(max_source_bytes=settings.UPLOAD_MAX_MB * 1024 * 1024),
     )
     with path.open("rb") as source:
-        validator.execute(source, ".docx")
+        validator.execute(source, path.suffix)
 
 
 async def save_upload_file(file: UploadFile) -> tuple[Path, int]:
@@ -50,11 +54,13 @@ async def save_upload_file(file: UploadFile) -> tuple[Path, int]:
                         detail=f"Файл «{file.filename}» больше {settings.UPLOAD_MAX_MB} МБ",
                     )
                 out.write(chunk)
-        if suffix == ".docx":
+        if suffix in {".docx", ".pdf"}:
             try:
-                await asyncio.to_thread(_validate_stored_docx, stored_path)
+                await asyncio.to_thread(_validate_stored_document, stored_path)
             except UploadRejected as exc:
-                status = 413 if exc.code == "docx_limit" else 415
+                status = 413 if exc.code in {"docx_limit", "pdf_limit"} else 415
+                if exc.code in {"pdf_unavailable", "pdf_busy"}:
+                    status = 503
                 raise HTTPException(status, str(exc)) from None
     except BaseException:
         stored_path.unlink(missing_ok=True)

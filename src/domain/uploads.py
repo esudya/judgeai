@@ -1,4 +1,4 @@
-"""Pure admission policy for the supported, bounded DOCX package subset."""
+"""Pure admission policies for supported, bounded document subsets."""
 
 from dataclasses import dataclass, fields
 
@@ -7,6 +7,14 @@ class UploadRejected(ValueError):
     def __init__(self, code: str, message: str):
         self.code = code
         super().__init__(message)
+
+
+def _check_positive_limits(instance, label):
+    if any(
+        type(getattr(instance, item.name)) is not int or getattr(instance, item.name) <= 0
+        for item in fields(instance)
+    ):
+        raise ValueError(f"{label} limits must be positive integers")
 
 
 @dataclass(frozen=True)
@@ -22,11 +30,7 @@ class DocxLimits:
     max_xml_elements: int = 200000
 
     def __post_init__(self):
-        if any(
-            type(getattr(self, item.name)) is not int or getattr(self, item.name) <= 0
-            for item in fields(self)
-        ):
-            raise ValueError("DOCX limits must be positive integers")
+        _check_positive_limits(self, "DOCX")
 
 
 @dataclass(frozen=True)
@@ -80,3 +84,49 @@ def check_entry(entry: ArchiveEntry, limits: DocxLimits):
     require_budget(entry.size, entry.compressed_size * limits.max_ratio)
     if name.lower().endswith((".xml", ".rels")):
         require_budget(entry.size, limits.max_xml_bytes)
+
+
+@dataclass(frozen=True)
+class PdfLimits:
+    max_source_bytes: int = 50 * 1024 * 1024
+    max_pages: int = 200
+    max_objects: int = 20000
+    max_stream_bytes: int = 8 * 1024 * 1024
+    max_total_decoded_bytes: int = 32 * 1024 * 1024
+    max_ratio: int = 200
+    max_nodes: int = 200000
+    max_depth: int = 64
+    max_filters: int = 4
+    max_page_points: int = 14400
+    max_image_pixels: int = 40000000
+    max_memory_bytes: int = 512 * 1024 * 1024
+    max_cpu_seconds: int = 3
+    max_wall_seconds: int = 6
+
+    def __post_init__(self):
+        _check_positive_limits(self, "PDF")
+
+
+@dataclass(frozen=True)
+class PdfInspection:
+    pages: int
+    objects: int
+    decoded_bytes: int
+
+
+def reject_pdf(code: str) -> UploadRejected:
+    messages = {
+        "pdf_invalid": "PDF is not a supported, intact document",
+        "pdf_encrypted": "Encrypted PDF documents are unsupported",
+        "pdf_limit": "PDF exceeds the supported processing limits",
+        "pdf_busy": "PDF validation is busy; try again later",
+        "pdf_unavailable": "PDF validation is unavailable; try again later",
+    }
+    if not isinstance(code, str) or code not in messages:
+        code = "pdf_unavailable"
+    return UploadRejected(code, messages[code])
+
+
+def require_pdf_budget(value: int | float, maximum: int) -> None:
+    if value > maximum:
+        raise reject_pdf("pdf_limit")
