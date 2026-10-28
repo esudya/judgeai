@@ -1,9 +1,13 @@
+import asyncio
 import uuid
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 
+from src.application.upload_validation import ValidateUpload
 from src.config import settings
+from src.domain.uploads import DocxLimits, UploadRejected
+from src.infrastructure.docx_inspector import DocxInspector
 
 _CHUNK = 1024 * 1024
 
@@ -17,6 +21,14 @@ def validate_extension(filename: str | None) -> str:
             detail=f"Формат «{suffix or 'без расширения'}» не поддерживается. Допустимо: {allowed}",
         )
     return suffix
+
+
+def _validate_stored_docx(path: Path) -> None:
+    validator = ValidateUpload(
+        DocxInspector(), DocxLimits(max_compressed_bytes=settings.UPLOAD_MAX_MB * 1024 * 1024)
+    )
+    with path.open("rb") as source:
+        validator.execute(source, ".docx")
 
 
 async def save_upload_file(file: UploadFile) -> tuple[Path, int]:
@@ -38,6 +50,12 @@ async def save_upload_file(file: UploadFile) -> tuple[Path, int]:
                         detail=f"Файл «{file.filename}» больше {settings.UPLOAD_MAX_MB} МБ",
                     )
                 out.write(chunk)
+        if suffix == ".docx":
+            try:
+                await asyncio.to_thread(_validate_stored_docx, stored_path)
+            except UploadRejected as exc:
+                status = 413 if exc.code == "docx_limit" else 415
+                raise HTTPException(status, str(exc)) from None
     except BaseException:
         stored_path.unlink(missing_ok=True)
         raise
