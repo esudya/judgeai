@@ -2,7 +2,7 @@
 
 Source inventory only; not a resolved runtime SBOM or legal approval.
 
-- Python declared packages (runtime/dev/build, deduplicated): **19**; exact installed versions: **0 verified**.
+- Python declared packages (runtime/dev/build, deduplicated): **20**; exact installed versions: **0 verified**.
 - npm lock entries: **121**; development entries: **118**.
 - Official legal archives: **8**; image declarations: **2**; model: **alekseevpavel04/multilingual-e5-small-ru-law**, revision unresolved.
 
@@ -21,6 +21,7 @@ Source inventory only; not a resolved runtime SBOM or legal approval.
 | Package | Constraints (not installed versions) | Upstream license |
 |---|---|---|
 | alembic | alembic>=1.13.1 | MIT |
+| argon2-cffi | argon2-cffi>=23.1.0 | MIT |
 | asyncpg | asyncpg>=0.29.0 | Apache-2.0 |
 | fastapi | fastapi>=0.110.0 | MIT |
 | fastembed | fastembed>=0.3.0 | Apache-2.0 |
