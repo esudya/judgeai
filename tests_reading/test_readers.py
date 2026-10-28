@@ -78,9 +78,24 @@ class DocumentReadingTests(ReadingFixture, unittest.TestCase):
             b'wordprocessingml/2006/main"><w:footnote w:id="1"><w:p><w:r>'
             b"<w:t>Important note</w:t></w:r></w:p></w:footnote></w:footnotes>"
         )
-        document = DOCUMENT.replace(b"</w:body>", b"<w:p><w:r><w:drawing/></w:r></w:p></w:body>")
+        document = DOCUMENT.replace(
+            b"</w:body>",
+            b'<w:p><w:r><w:drawing/><w:footnoteReference w:id="1"/></w:r></w:p></w:body>',
+        )
         result = self.read(
-            archive({"word/document.xml": document, "word/footnotes.xml": note}), ".docx"
+            archive(
+                {
+                    "word/document.xml": document,
+                    "word/footnotes.xml": note,
+                    "word/_rels/document.xml.rels": (
+                        b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                        b'<Relationship Id="n1" Type="http://schemas.openxmlformats.org/'
+                        b'officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/>'
+                        b"</Relationships>"
+                    ),
+                }
+            ),
+            ".docx",
         )
         self.assertIn("Important note", result.text)
         self.assertEqual(result.status, "partial")
@@ -110,7 +125,15 @@ class ReadingLimitsTests(ReadingFixture, unittest.TestCase):
         ]:
             with (
                 self.subTest(setting=setting, suffix=suffix),
-                patch("src.infrastructure.document_readers." + setting, 10),
+                patch(
+                    (
+                        "src.infrastructure.word_reader."
+                        if suffix == ".docx"
+                        else "src.infrastructure.document_readers."
+                    )
+                    + setting,
+                    10,
+                ),
             ):
                 document = self.read(raw, suffix)
                 self.assertEqual((document.text, document.status), ("", "error"))
@@ -145,5 +168,98 @@ class ReadingLimitsTests(ReadingFixture, unittest.TestCase):
         )
         result = self.read(archive({"word/document.xml": document}), ".docx")
         self.assertNotIn("Deleted allegation", result.text)
+        self.assertEqual(result.status, "partial")
+        self.assertIn("tracked_changes", result.issues)
+
+
+class ReadingReviewRegressions(ReadingFixture, unittest.TestCase):
+    def test_utf8_bom_forbids_legacy_fallback_and_truncated_unicode_is_not_reinterpreted(self):
+        for raw in [
+            b"\xef\xbb\xbf" + "Приговор районного суда".encode("cp1251"),
+            ("а" * 32).encode()[:-1],
+        ]:
+            result = self.read(raw)
+            self.assertEqual((result.text, result.status), ("", "error"))
+            self.assertIn("invalid_encoding", result.issues)
+
+    def test_mutually_exclusive_word_alternatives_are_never_combined(self):
+        alternatives = (
+            b'<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/marku'
+            b'p-compatibility/2006"><mc:Choice Requires="x"><w:p><w:r><w:t>GUILTY</w'
+            b":t></w:r></w:p></mc:Choice><mc:Fallback><w:p><w:r><w:t>NOT GUILTY</w:t"
+            b"></w:r></w:p></mc:Fallback></mc:AlternateContent>"
+        )
+        document = DOCUMENT.replace(b"</w:body>", alternatives + b"</w:body>")
+        result = self.read(archive({"word/document.xml": document}), ".docx")
+        self.assertNotIn("GUILTY", result.text)
+        self.assertEqual(result.status, "partial")
+        self.assertIn("unsupported_content", result.issues)
+
+    def test_orphan_word_parts_are_not_current_content(self):
+        header = (
+            b'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/200'
+            b'6/main"><w:p><w:r><w:t>Old removed allegation</w:t></w:r></w:p></w:hdr'
+            b">"
+        )
+        result = self.read(archive({"word/header99.xml": header}), ".docx")
+        self.assertEqual((result.text, result.status), ("Synthetic case.", "ok"))
+
+    def test_referenced_header_can_have_a_nonstandard_part_name(self):
+        header = (
+            b'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/200'
+            b'6/main"><w:p><w:r><w:t>Current header</w:t></w:r></w:p></w:hdr>'
+        )
+        document = DOCUMENT.replace(
+            b"<w:body>",
+            b'<w:body xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        ).replace(b"</w:body>", b'<w:sectPr><w:headerReference r:id="h1"/></w:sectPr></w:body>')
+        rels = (
+            b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/r'
+            b'elationships"><Relationship Id="h1" Type="http://schemas.openxmlformat'
+            b's.org/officeDocument/2006/relationships/header" Target="../custom/curr'
+            b'ent.xml"/></Relationships>'
+        )
+        result = self.read(
+            archive(
+                {
+                    "word/document.xml": document,
+                    "word/_rels/document.xml.rels": rels,
+                    "custom/current.xml": header,
+                }
+            ),
+            ".docx",
+        )
+        self.assertIn("Current header", result.text)
+        self.assertEqual(result.status, "ok")
+
+    def test_removed_section_properties_do_not_reactivate_old_headers(self):
+        header = (
+            b'<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            b"<w:p><w:r><w:t>Removed header</w:t></w:r></w:p></w:hdr>"
+        )
+        document = DOCUMENT.replace(
+            b"<w:body>",
+            b'<w:body xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        ).replace(
+            b"</w:body>",
+            b'<w:sectPr><w:sectPrChange><w:sectPr><w:headerReference r:id="old"/>'
+            b"</w:sectPr></w:sectPrChange></w:sectPr></w:body>",
+        )
+        rels = (
+            b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            b'<Relationship Id="old" Type="http://schemas.openxmlformats.org/'
+            b'officeDocument/2006/relationships/header" Target="old.xml"/></Relationships>'
+        )
+        result = self.read(
+            archive(
+                {
+                    "word/document.xml": document,
+                    "word/_rels/document.xml.rels": rels,
+                    "word/old.xml": header,
+                }
+            ),
+            ".docx",
+        )
+        self.assertNotIn("Removed header", result.text)
         self.assertEqual(result.status, "partial")
         self.assertIn("tracked_changes", result.issues)

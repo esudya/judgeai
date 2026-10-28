@@ -5,7 +5,8 @@ from pathlib import Path
 from src.application.document_reading import ReadDocument
 from src.domain.documents import MAX_TEXT_CHARACTERS, ExtractedDocument, classify_pages
 from src.domain.uploads import UploadRejected
-from src.infrastructure.document_readers import read_text, read_word
+from src.infrastructure.document_readers import read_text
+from src.infrastructure.word_reader import read_word
 
 
 def _read_pdf_file(path: Path) -> ExtractedDocument:
