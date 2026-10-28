@@ -30,4 +30,3 @@ try {
   });
   render = createRequire(import.meta.url)(outfile).render;
 } finally { await rm(dir, {recursive: true, force: true}); }
-
