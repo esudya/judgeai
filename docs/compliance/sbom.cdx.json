@@ -25,7 +25,7 @@
       },
       {
         "name": "judgeai:input-sha256:pyproject.toml",
-        "value": "ba4db2e8b3dd5db1d48aa118941479484639339b9e72ea6c9f6b68c6140558ed"
+        "value": "33ce467b841c3c306157c7565147f50f6c71dc695c8b1466e3c74ebfbf63ef7d"
       },
       {
         "name": "judgeai:input-sha256:packages/legal_core/pyproject.toml",
@@ -41,7 +41,7 @@
       },
       {
         "name": "judgeai:input-sha256:docs/compliance/license-evidence.json",
-        "value": "08d300b789490ca440808c939a913e26d080891e3030d743f18555d06e56a84b"
+        "value": "a7d6a4d91929dbe5290263d525c7eec55a3bb32579daeb704f272bfc856d8d25"
       },
       {
         "name": "judgeai:input-sha256:docs/compliance/resources.json",
@@ -53,7 +53,7 @@
       },
       {
         "name": "judgeai:input-sha256:src/config.py",
-        "value": "ea4395a0f960f98fec45439e2aa24550f62af432b1e2b6746013a7f1ce70f54a"
+        "value": "d6d27756c68f45ae80f391618e0af466a485e0a08ec9abe7fdbaf09e65b9d442"
       },
       {
         "name": "judgeai:input-sha256:Dockerfile",
@@ -5473,6 +5473,45 @@
     },
     {
       "type": "library",
+      "bom-ref": "pypi:argon2-cffi",
+      "name": "argon2-cffi",
+      "purl": "pkg:pypi/argon2-cffi",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "license",
+          "url": "https://api.github.com/repos/hynek/argon2-cffi/git/blobs/d1b626b36530035f4a816de74e4adec2f0b6f655"
+        }
+      ],
+      "properties": [
+        {
+          "name": "judgeai:resolution",
+          "value": "unresolved"
+        },
+        {
+          "name": "judgeai:license-evidence-scope",
+          "value": "upstream-source-not-resolved-distribution"
+        },
+        {
+          "name": "judgeai:license-evidence-git-blob",
+          "value": "d1b626b36530035f4a816de74e4adec2f0b6f655"
+        },
+        {
+          "name": "judgeai:declaration",
+          "value": "pyproject.toml:runtime"
+        },
+        {
+          "name": "judgeai:declared-requirement",
+          "value": "argon2-cffi>=23.1.0"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "pypi:asyncpg",
       "name": "asyncpg",
       "purl": "pkg:pypi/asyncpg",
@@ -6950,6 +6989,7 @@
         "npm:node_modules/vite@7.3.7",
         "project:legal_core",
         "pypi:alembic",
+        "pypi:argon2-cffi",
         "pypi:asyncpg",
         "pypi:fastapi",
         "pypi:fastembed",
