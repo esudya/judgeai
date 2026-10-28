@@ -53,3 +53,5 @@ Verified on 2026-10-27: 42 API tests, 30 core tests, core coverage 99.2%, 3 web 
 Structured sanctions of УК РФ (T5) are derived from the imported official text: `python -m src.cli.criminal_sanctions import`, then `GET /api/legal/sanctions?article=158&part=2`. The analysis uses them for the sanction maximum, ст. 15 category and the check of the imposed term (sanction bounds, ч. 1 ст. 62). See [docs/LEGAL_LIBRARY.md](docs/LEGAL_LIBRARY.md).
 
 The criminal-pilot source library, additive migration, trusted import commands, read-only API and local corpus counts are documented in [docs/LEGAL_LIBRARY.md](docs/LEGAL_LIBRARY.md). Technical import is deliberately separate from legal verification: unreviewed sources cannot answer a verified date lookup. No automatic switch of the existing analysis engine to unreviewed legislation is performed.
+
+Локальные учётные записи и план миграции T10: [docs/AUTH.md](docs/AUTH.md) (Draft; PostgreSQL и visual QA обязательны до слияния).

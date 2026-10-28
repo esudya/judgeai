@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AuthGate } from './auth/AuthGate';
 import { Cabinet, parseCabinetPath } from './cabinet/Cabinet';
 import { Landing } from './landing/Landing';
 import { usePath } from './router';
@@ -11,6 +12,6 @@ export function App() {
     document.title = isCabinet ? 'Вердикт — личный кабинет' : 'Вердикт — ИИ-помощник судьи';
   }, [isCabinet]);
 
-  if (isCabinet) return <Cabinet route={parseCabinetPath(path)} onNavigate={go} />;
+  if (isCabinet) return <AuthGate>{(user, signOut) => <Cabinet key={user.id} route={parseCabinetPath(path)} onNavigate={go} user={user} onSignOut={signOut} />}</AuthGate>;
   return <Landing />;
 }

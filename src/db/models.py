@@ -23,6 +23,9 @@ class Chat(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str | None] = mapped_column(String(255))
+    owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT", name="fk_chats_owner_id_users"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # onupdate fires only when the chat row itself changes; new messages touch it explicitly
     # (see api/chats.py) so the case list can be ordered by latest activity.
@@ -40,6 +43,11 @@ class Message(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id", ondelete="CASCADE"), index=True)
+    request_message_id: Mapped[int | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL", name="fk_messages_request_message_id"),
+        index=True,
+        unique=True,
+    )
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="pending")
@@ -113,5 +121,6 @@ class KnowledgeChunk(Base):
 
 
 # Register the public legal corpus and derived sanctions in the metadata used by Alembic.
+from src.db.auth import LoginBucket, User, UserSession  # noqa: E402,F401
 from src.db.criminal_sanctions import CriminalArticleSanction  # noqa: E402,F401
 from src.db.legal_library import LegalAct, LegalEdition, LegalProvision, LegalRuleReference  # noqa: E402,F401
