@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     # Disable connection pooling (tests: every test gets its own event loop).
     DB_NULL_POOL: bool = False
 
+    AUTH_COOKIE_SECURE: bool = True
+
     UPLOAD_DIR: str = "uploads"
     UPLOAD_MAX_MB: int = 50
     UPLOAD_ALLOWED_EXTENSIONS: str = ".pdf,.docx,.txt,.md"
@@ -31,8 +33,8 @@ class Settings(BaseSettings):
     EMBEDDING_CHUNK_SIZE: int = 2500
     EMBEDDING_MAX_CHUNKS: int = 8
 
-    # Comma-separated. "*" keeps the previous behaviour; narrow it before any real deployment.
-    CORS_ORIGINS: str = "*"
+    # Explicit origins only for credentialed browser sessions.
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:5178"
 
     @property
     def DATABASE_URL(self) -> str:
@@ -47,7 +49,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+        origins = [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+        if "*" in origins:
+            raise ValueError("CORS_ORIGINS must use explicit origins with cookie authentication")
+        return origins
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -1,0 +1,15 @@
+# T10: Local user authentication
+
+User request: work on login independently of T24–T29. Base: main 01fa4ec42689a7d6deb57736f7b7610e5fd38fd5, synchronized through GitLab connector because shell network is unavailable.
+
+Use existing FastAPI/PostgreSQL/React. Passwords use argon2-cffi PasswordHasher (Argon2id); add this dependency because the existing stack has no password hashing implementation. Opaque random sessions: only SHA-256 digest in PostgreSQL, eight-hour expiry, HttpOnly/SameSite=Strict cookie, Secure by default (explicit local HTTP override). Mutations require a session-bound CSRF header; login requires a custom header to reject browser form login CSRF. No public signup: local CLI creates accounts using getpass. Account provisioning and real-data privacy remain operator responsibilities.
+
+Migration 0005_users follows actual 0004 head, adds users/sessions/login buckets and owner_id to chats, plus an explicit nullable request_message_id self-reference on messages (unique per request). New jobs atomically claim pending replies; old message links are not inferred. Backfill to a disabled legacy account, never a known password or automatic assignment to a new login. A local explicit CLI assignment requires operator ownership confirmation. No working DB migration during this task. Downgrade drops auth fields/tables but keeps cases/messages/attachments; backup first, never automatic.
+
+Every chat/message/result endpoint authenticates and filters owner_id; administrators cannot read others' private cases through regular routes. Background jobs receive immutable UserContext and validate the explicit request/result pair, pending state and owner before processing. Login limits use independent account and coarse host buckets; successful login clears its account bucket and removes its host attempt. Forwarded client headers are not trusted automatically. Existing report results live on assistant messages; no separate report tables/routes exist yet. Shared knowledge management/search stays administrator-only pending visibility/anonymization work; do not change matching or precedence extraction. Legal catalogue remains public read-only.
+
+UI: retain existing type/colors/buttons; compact single-column sign-in with labelled username/password, progress, failures, keyboard focus and sign out. Keep session/CSRF only in memory/cookies, no localStorage. Expired auth unmounts private UI and offers reauthentication. No unrelated landing or cabinet redesign.
+
+DoD: login/logout, disabled/expired/revoked sessions and CSRF rejected; two users cannot list/read/post/poll each other's cases, attachments/results; background cross-owner/pair mismatch rejected before file/model access; old-case backfill/revision roundtrip preserves records; no secret in tracked files. Full PG suite, frontend build and desktop/mobile inspection required before merge. Current Docker permission review is unavailable due to account usage limit: record unrun checks; do not bypass it or merge.
+
+Primary references: https://argon2-cffi.readthedocs.io/en/stable/api.html and https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html.
