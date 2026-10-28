@@ -102,3 +102,21 @@ async def test_upload_matching_a_private_document_creates_a_shared_one():
         assert item["verdict_id"] != private_id
         assert item["duplicate"] is False and "alice-case" not in r.text and "1-777" not in r.text
         assert (await client.get("/api/knowledge/verdicts")).json()["total"] == 1
+
+
+async def test_private_case_document_cannot_be_read_by_id():
+    """Guessing the id of a document saved from another user's case returns nothing of it."""
+    async with async_session_factory() as db:
+        private = KnowledgeVerdict(
+            raw_text="Протокол допроса свидетеля Смирнова",
+            source_type="chat",
+            source_filename="alice-case.txt",
+        )
+        db.add(private)
+        await db.commit()
+        private_id = private.id
+    async with anonymous() as client:
+        await _ordinary(client)
+        r = await client.get(f"/api/knowledge/verdicts/{private_id}")
+        assert r.status_code == 404
+        assert "Смирнова" not in r.text and "alice-case" not in r.text
